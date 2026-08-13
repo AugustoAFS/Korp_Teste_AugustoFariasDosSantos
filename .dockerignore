@@ -1,0 +1,43 @@
+# Contexto de build na raiz do repositório.
+# Vale para qualquer serviço cujo compose use `context: .`
+
+# ---------- controle de versão / ferramentas
+**/.git
+**/.gitignore
+**/.gitattributes
+**/.vs
+**/.vscode
+**/.idea
+.claude/
+
+# ---------- .NET
+**/bin
+**/obj
+**/*.*proj.user
+**/artifacts
+**/TestResults
+
+# ---------- Angular / Node
+**/node_modules
+**/dist
+**/.angular
+**/npm-debug.log
+**/coverage
+
+# ---------- docker
+**/Dockerfile*
+**/.dockerignore
+**/docker-compose*
+
+# ---------- documentação e mídia (não vai para imagem)
+Documentacao/
+README.md
+LICENSE
+**/*.md
+**/*.pdf
+
+# ---------- segredos
+**/.env
+**/secrets.dev.yaml
+**/values.dev.yaml
+**/appsettings.*.local.json

@@ -1,0 +1,25 @@
+# Claude Code
+.claude/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+artifacts/
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+
+# IDE
+.vs/
+.idea/
+*.swp
+
+# Sistema
+Thumbs.db
+.DS_Store

@@ -1,0 +1,157 @@
+@use '@angular/material' as mat;
+@use './styles/theme-colors' as tema;
+
+// ---------------------------------------------------------------- tema Material
+html {
+  height: 100%;
+
+  @include mat.theme((
+    color: (
+      primary:  tema.$primary-palette,
+      tertiary: tema.$tertiary-palette,
+    ),
+    typography: (
+      plain-family: 'Fira Sans',
+      brand-family: 'Fira Code',
+    ),
+    density: -1,          // compacta tabela e formulário — uso profissional em desktop
+  ));
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  height: 100%;
+}
+
+// ---------------------------------------------------------------- tokens
+:root {
+  /* ---------- primitivo ---------- */
+  --slate-900: #0f172a;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-200: #e6e8ea;
+  --slate-100: #f2f3f4;
+  --slate-50:  #f8fafc;
+  --green-600: #059669;
+  --amber-500: #f59e0b;
+  --red-600:   #dc2626;
+  --white:     #ffffff;
+
+  /* ---------- semântico ---------- */
+  --color-primary:     var(--slate-700);
+  --color-on-primary:  var(--white);
+  --color-secondary:   var(--slate-600);
+  --color-accent:      var(--green-600);
+  --color-background:  var(--slate-50);
+  --color-surface:     var(--white);
+  --color-foreground:  var(--slate-900);
+  --color-muted:       var(--slate-100);
+  --color-border:      var(--slate-200);
+  --color-success:     var(--green-600);
+  --color-warning:     var(--amber-500);
+  --color-destructive: var(--red-600);
+
+  /* ---------- componente ---------- */
+  --chip-aberta-bg:      var(--color-muted);
+  --chip-aberta-fg:      var(--color-secondary);
+  --chip-fechada-bg:     color-mix(in srgb, var(--color-success) 12%, transparent);
+  --chip-fechada-fg:     var(--color-success);
+  --chip-processando-bg: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  --chip-processando-fg: var(--color-primary);
+  --table-header-bg:     var(--color-muted);
+  --table-row-hover:     color-mix(in srgb, var(--color-primary) 4%, transparent);
+
+  /* ---------- escala ---------- */
+  --space-1: 4px;  --space-2: 8px;   --space-3: 12px;
+  --space-4: 16px; --space-6: 24px;  --space-8: 32px;  --space-12: 48px;
+  --radius: 6px;
+  --radius-lg: 8px;
+
+  /* ---------- seção neutra (login) ---------- */
+  --secao-accent:  var(--color-primary);
+  --secao-texto:   var(--color-primary);
+  --secao-forte:   var(--slate-900);
+  --secao-surface: var(--color-surface);
+  --secao-border:  var(--color-border);
+  --secao-radius:  var(--radius);
+}
+
+// ---------------------------------------------------------------- identidade por seção
+[data-secao='produtos'] {
+  --secao-accent:  #ea580c;   // barra, faixa, ícone — nunca texto corrido
+  --secao-texto:   #9a3412;   // título e link: contraste de texto (4.5:1)
+  --secao-forte:   #c2410c;
+  --secao-surface: #fff7ed;
+  --secao-border:  #fed7aa;
+  --secao-radius:  4px;
+}
+
+[data-secao='notas'] {
+  --secao-accent:  #2563eb;
+  --secao-texto:   #1d4ed8;
+  --secao-forte:   #1e40af;
+  --secao-surface: #eff6ff;
+  --secao-border:  #bfdbfe;
+  --secao-radius:  6px;
+}
+
+.secao-barra {
+  height: 4px;
+  background: var(--secao-accent);
+  transition: background 200ms ease-in-out;
+}
+
+[data-secao='produtos'] .secao-barra {
+  height: 6px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--secao-accent) 0 12px,
+    var(--slate-700) 12px 24px
+  );
+}
+
+// ---------------------------------------------------------------- utilitários
+.tabela-wrapper {
+  overflow-x: auto;   // a página nunca rola na horizontal, só a tabela
+}
+
+.codigo {
+  font-family: 'Fira Code', monospace;
+  letter-spacing: 0.02em;
+}
+
+[data-secao='produtos'] .codigo {
+  background: var(--slate-700);
+  color: var(--white);
+  padding: 2px var(--space-2);
+  border-radius: 2px;
+}
+
+.numerico {
+  font-family: 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+@keyframes pulso-saldo {
+  0%   { background: color-mix(in srgb, var(--color-success) 25%, transparent); }
+  100% { background: transparent; }
+}
+
+.saldo-alterado {
+  animation: pulso-saldo 900ms ease-out;
+}
+
+// ---------------------------------------------------------------- acessibilidade
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
