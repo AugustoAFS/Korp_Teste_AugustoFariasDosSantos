@@ -23,6 +23,27 @@ services:
       start_period: 10s
     networks: [emissor]
 
+  gateway:
+    build:
+      context: ./API-Gateway
+      dockerfile: Gateway/Dockerfile
+    container_name: emissor-gateway
+    profiles: [app]
+    restart: unless-stopped
+    depends_on:
+      gateway-db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__GatewayDb: "Host=gateway-db;Port=5432;Database=gateway;Username=emissor;Password=emissor"
+      Cors__Origins__0: "http://localhost:4200"
+      Security__JwtKey: ${GATEWAY_JWT_KEY:-}
+      Security__Pepper: ${GATEWAY_PEPPER:-}
+    ports:
+      - "127.0.0.1:5000:8080"
+    networks: [emissor]
+
   # ------------------------------------------------------------ faturamento
   faturamento-db:
     image: postgres:17-alpine

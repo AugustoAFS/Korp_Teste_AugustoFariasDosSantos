@@ -23,3 +23,8 @@ npm-debug.log*
 # Sistema
 Thumbs.db
 .DS_Store
+
+# .NET secrets locais
+appsettings.Development.json
+appsettings.*.Local.json
+.env

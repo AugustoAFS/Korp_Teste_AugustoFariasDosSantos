@@ -1,34 +1,65 @@
+using Gateway.Config;
+using Gateway.Data;
+using Gateway.DependencyInjection;
+using Gateway.Middleware;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace Gateway
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            builder.Host.UseDefaultServiceProvider(options =>
+            {
+                options.ValidateOnBuild = true;
+                options.ValidateScopes = true;
+            });
+
+            builder.Services
+                .AddDependencies(builder.Configuration)
+                .AddPersistentDataProtection()
+                .AddCookieAuthentication(builder.Environment)
+                .AddFrontCors(builder.Configuration)
+                .AddRateLimiting()
+                .AddDatabaseHealthCheck()
+                .AddVersioning()
+                .AddValidationContract()
+                .AddDocumentation();
 
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            await app.PrepareDatabase();
+
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
             {
-                app.MapOpenApi();
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
+
+            app.UseMiddleware<ExceptionMiddleware>();
+
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHsts();
+                app.UseHttpsRedirection();
             }
 
-            app.UseHttpsRedirection();
-
+            app.UseRouting();
+            app.UseCors(CorsConfig.Policy);
+            app.UseAuthentication();
+            app.UseRateLimiter();
+            app.UseMiddleware<AntiforgeryMiddleware>();
             app.UseAuthorization();
 
-
             app.MapControllers();
+            app.MapDatabaseHealthCheck();
+            app.MapDocumentation();
 
-            app.Run();
+            await app.RunAsync();
         }
     }
 }

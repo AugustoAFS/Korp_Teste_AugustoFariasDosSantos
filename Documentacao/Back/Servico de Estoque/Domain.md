@@ -2,54 +2,62 @@
 
 **SQL Server** · produtos e autoridade do saldo.
 
-## Produtos
+Sem `DEFAULT` e sem `CHECK` no banco: valores iniciais e a recusa de saldo negativo ficam no
+código. O débito concorrente é protegido pelo `UPDATE` condicional do repositório, que só
+afeta a linha quando o saldo comporta a baixa.
+
+## Products
 
 ```sql
-CREATE TABLE Produtos (
-    Id                   UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Produtos PRIMARY KEY,
-    Codigo               VARCHAR(50)      NOT NULL,
-    Descricao            VARCHAR(200)     NOT NULL,
-    Saldo                INT              NOT NULL CONSTRAINT CK_Produtos_Saldo CHECK (Saldo >= 0),
-    Ativo                BIT              NOT NULL DEFAULT 1,
-    CriadoEm             DATETIME2(3)     NOT NULL DEFAULT SYSUTCDATETIME(),
-    CriadoPorUsuarioId   UNIQUEIDENTIFIER NULL,     -- claim do JWT, sem FK
-    AlteradoEm           DATETIME2(3)     NULL,
-    AlteradoPorUsuarioId UNIQUEIDENTIFIER NULL,     -- claim do JWT, sem FK
-    RowVersion           ROWVERSION       NOT NULL
+CREATE TABLE Products (
+    Id                      UNIQUEIDENTIFIER    NOT NULL CONSTRAINT PK_Products PRIMARY KEY,
+    Code                    VARCHAR(50)         NOT NULL,
+    Description             VARCHAR(200)        NOT NULL,   -- nome do produto
+    Balance                 INT                 NOT NULL,   -- quantidade disponível em estoque
+    Active                  BIT                 NOT NULL,
+    Created_at              DATETIME2(3)        NOT NULL,
+    Updated_at              DATETIME2(3)        NULL,
+    Deleted_at              DATETIME2(3)        NULL
 );
 
 ```
 
-## MovimentosEstoque
+## Inventory_Movements
 
 ```sql
-CREATE TABLE MovimentosEstoque (
-    Id             UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_MovimentosEstoque PRIMARY KEY,
-    ProdutoId      UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_Mov_Produto REFERENCES Produtos (Id),
-    Tipo           TINYINT          NOT NULL CHECK (Tipo IN (1,2,3)),   -- 1 Saida, 2 Entrada, 3 Ajuste
-    Quantidade     INT              NOT NULL CHECK (Quantidade > 0),
-    SaldoAnterior  INT              NOT NULL,
-    SaldoNovo      INT              NOT NULL,
-    NotaFiscalId   UNIQUEIDENTIFIER NULL,     -- cross-service, sem FK
-    IdempotencyKey UNIQUEIDENTIFIER NULL,     -- processamento_id vindo do Faturamento
-    UsuarioId      UNIQUEIDENTIFIER NULL,     -- claim do JWT, sem FK
-    OcorridoEm     DATETIME2(3)     NOT NULL DEFAULT SYSUTCDATETIME()
+CREATE TABLE Inventory_Movements (
+    Id                  UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Inventory_Movements PRIMARY KEY,
+    Product_id          UNIQUEIDENTIFIER NOT NULL CONSTRAINT FK_Movement_Product REFERENCES Products (Id),
+    Type                TINYINT          NOT NULL,   -- 1 Saída, 2 Entrada, 3 Ajuste
+    Quantity            INT              NOT NULL,
+    Balance_before      INT              NOT NULL,
+    Balance_after       INT              NOT NULL,
+    Tax_Invoice_id      BIGINT           NULL,       -- cross-service, sem FK
+    Idempotency_key     UNIQUEIDENTIFIER NULL,       -- Processing_id vindo do Faturamento
+    Moved_by_user_id    BIGINT           NULL,       -- claim sub do JWT, sem FK
+    Occurred_at         DATETIME2(3)     NOT NULL
 );
 
 ```
 
-## OutboxMensagens
+`Tax_Invoice_id` e `Moved_by_user_id` são `BIGINT` porque a nota fiscal e o usuário nascem de
+colunas identity no Faturamento e no gateway. `Idempotency_key` é o que torna o
+`OnBaixarEstoque` seguro contra reentrega da mesma mensagem.
+
+## Outbox_Messages
+
+Outbox transacional. O evento é gravado na mesma transação da baixa e publicado depois pelo
+`OutboxDispatcherWorker`.
 
 ```sql
-CREATE TABLE OutboxMensagens (
-    Id           UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_OutboxMensagens PRIMARY KEY,
-    Tipo         VARCHAR(100)     NOT NULL,
-    Payload      NVARCHAR(MAX)    NOT NULL,
-    CriadoEm     DATETIME2(3)     NOT NULL DEFAULT SYSUTCDATETIME(),
-    PublicadoEm  DATETIME2(3)     NULL,
-    Tentativas   INT              NOT NULL DEFAULT 0,
-    UltimoErro   NVARCHAR(1000)   NULL
+CREATE TABLE Outbox_Messages (
+    Id              UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_Outbox_Messages PRIMARY KEY,
+    Type            VARCHAR(100)     NOT NULL,   -- nome do tipo CLR, resolvido pelo dispatcher
+    Payload         NVARCHAR(MAX)    NOT NULL,
+    Created_at      DATETIME2(3)     NOT NULL,
+    Published_at    DATETIME2(3)     NULL,
+    Attempts        INT              NOT NULL,
+    Last_error      NVARCHAR(MAX)    NULL
 );
 
-CREATE INDEX IX_Outbox_Pendentes ON OutboxMensagens (CriadoEm) WHERE PublicadoEm IS NULL;
 ```

@@ -2,78 +2,106 @@
 
 **PostgreSQL** · notas fiscais, itens e ciclo de emissão. Não guarda saldo.
 
+Sem `DEFAULT` e sem `CHECK` no banco: valores iniciais, numeração e validação de faixa são
+responsabilidade do código.
+
 ```sql
-CREATE SEQUENCE seq_nota_fiscal_numero AS BIGINT START WITH 1 INCREMENT BY 1;
+
+CREATE SEQUENCE seq_nota_fiscal_numero;
+
 ```
 
-## notas_fiscais
+## Tax_Invoice
 
 ```sql
-CREATE TABLE notas_fiscais (
-    id                        UUID         NOT NULL PRIMARY KEY,
-    numero                    BIGINT       NOT NULL DEFAULT nextval('seq_nota_fiscal_numero'),
-    status                    SMALLINT     NOT NULL DEFAULT 1 CHECK (status IN (1, 2)),  -- 1 Aberta, 2 Fechada
-    emitida_por_usuario_id    UUID         NOT NULL,   -- claim do JWT, sem FK
-    emitida_por_usuario_nome  TEXT         NOT NULL,   -- snapshot
-    criada_em                 TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    fechada_em                TIMESTAMPTZ  NULL,
-    processamento_id          UUID         NULL,       -- impressão em voo / idempotência
-    processamento_iniciado_em TIMESTAMPTZ  NULL,
-    ultimo_erro               TEXT         NULL
+
+CREATE TABLE Tax_Invoice (
+    Id                      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    Number                  BIGINT       NOT NULL,   -- nextval(seq_nota_fiscal_numero), pedido pelo código
+    Status                  SMALLINT     NOT NULL,   -- 1 Aberta, 2 Fechada, 3 Com erro
+    Issued_by_user_id       BIGINT       NOT NULL,   -- claim sub do JWT, sem FK
+    Issued_by_user_name     VARCHAR(150) NOT NULL,   -- snapshot do claim name
+    Created_at              TIMESTAMPTZ  NOT NULL,
+    Closed_at               TIMESTAMPTZ  NULL,
+    Processing_id           UUID         NULL,       -- impressão em voo / idempotência
+    Processing_started_at   TIMESTAMPTZ  NULL,
+    Last_error              TEXT         NULL
 );
 
 ```
 
-## itens_nota_fiscal
+O snapshot do emitente existe para a nota continuar exibindo quem emitiu mesmo que o usuário
+seja renomeado ou desativado no gateway, e para o front não precisar consultar outro serviço
+ao listar notas.
+
+`Processing_id` é a chave de idempotência enviada no `BaixarEstoqueCommand` e devolvida pelo
+Estoque em `Inventory_Movements.Idempotency_Key`.
+
+## Products_Tax_Invoice
 
 ```sql
-CREATE TABLE itens_nota_fiscal (
-    id                 UUID         NOT NULL PRIMARY KEY,
-    nota_fiscal_id     UUID         NOT NULL REFERENCES notas_fiscais (id) ON DELETE CASCADE,
-    produto_id         UUID         NOT NULL,   -- cross-service, sem FK
-    produto_codigo     VARCHAR(50)  NOT NULL,   -- snapshot
-    produto_descricao  VARCHAR(200) NOT NULL,   -- snapshot
-    quantidade         INTEGER      NOT NULL CHECK (quantidade > 0),
 
-    CONSTRAINT ux_item_nf_produto UNIQUE (nota_fiscal_id, produto_id)
+CREATE TABLE Products_Tax_Invoice (
+    Id                  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    Tax_Invoice_Id      BIGINT       NOT NULL REFERENCES Tax_Invoice (Id) ON DELETE CASCADE,
+    Product_id          UUID         NOT NULL,   -- cross-service, sem FK
+    Product_code        VARCHAR(50)  NOT NULL,   -- snapshot
+    Product_description VARCHAR(200) NOT NULL,   -- snapshot
+    Quantity            INTEGER      NOT NULL
 );
 
 ```
 
-## produtos_replicados  (read-model, sem saldo)
+Produto duplicado na mesma nota e quantidade menor ou igual a zero são barrados no serviço,
+não no banco.
+
+## Replicated_Products
+
+Read-model alimentado por `OnProdutoCriado` e `OnProdutoAtualizado`. Não guarda saldo — o
+saldo é autoridade exclusiva do Estoque.
 
 ```sql
-CREATE TABLE produtos_replicados (
-    produto_id     UUID         NOT NULL PRIMARY KEY,
-    codigo         VARCHAR(50)  NOT NULL,
-    descricao      VARCHAR(200) NOT NULL,
-    ativo          BOOLEAN      NOT NULL DEFAULT TRUE,
-    atualizado_em  TIMESTAMPTZ  NOT NULL DEFAULT now()
+
+CREATE TABLE Replicated_Products (
+    Product_id      UUID         NOT NULL PRIMARY KEY,
+    Code            VARCHAR(50)  NOT NULL,
+    Description     VARCHAR(200) NOT NULL,
+    Active          BOOLEAN      NOT NULL,
+    Updated_at      TIMESTAMPTZ  NOT NULL
 );
 
 ```
 
-## mensagens_processadas
+## Processed_Messages
+
+Deduplicação dos consumidores. A entrega é at-least-once, então todo listener grava aqui
+antes de aplicar o efeito.
 
 ```sql
-CREATE TABLE mensagens_processadas (
-    message_id     UUID         NOT NULL PRIMARY KEY,
-    tipo           VARCHAR(100) NOT NULL,
-    processado_em  TIMESTAMPTZ  NOT NULL DEFAULT now()
+
+CREATE TABLE Processed_Messages (
+    Message_id      UUID         NOT NULL PRIMARY KEY,
+    Type            VARCHAR(100) NOT NULL,
+    Processed_at    TIMESTAMPTZ  NOT NULL
 );
+
 ```
 
-## outbox_mensagens
+## Outbox_Messages
+
+Outbox transacional. O evento é gravado na mesma transação da mudança de estado e publicado
+depois pelo `OutboxDispatcherWorker`.
 
 ```sql
-CREATE TABLE outbox_mensagens (
-    id            UUID         NOT NULL PRIMARY KEY,
-    tipo          VARCHAR(100) NOT NULL,
-    payload       JSONB        NOT NULL,
-    criado_em     TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    publicado_em  TIMESTAMPTZ  NULL,
-    tentativas    INTEGER      NOT NULL DEFAULT 0,
-    ultimo_erro   TEXT         NULL
+
+CREATE TABLE Outbox_Messages (
+    Id              UUID         NOT NULL PRIMARY KEY,
+    Type            VARCHAR(100) NOT NULL,   -- nome do tipo CLR, resolvido pelo dispatcher
+    Payload         JSONB        NOT NULL,
+    Created_at      TIMESTAMPTZ  NOT NULL,
+    Published_at    TIMESTAMPTZ  NULL,
+    Attempts        INTEGER      NOT NULL,
+    Last_error      TEXT         NULL
 );
 
 ```
