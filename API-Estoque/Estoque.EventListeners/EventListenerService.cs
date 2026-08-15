@@ -6,37 +6,29 @@ using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Estoque.EventListeners
+namespace Estoque.EventListeners;
+
+public static class EventListenerService
 {
-    /// <summary>
-    /// Registro da mensageria. Listener novo não exige alteração aqui:
-    /// AddConsumers varre o assembly e ConfigureEndpoints cria as filas
-    /// a partir da Definition aninhada em cada On*.
-    /// </summary>
-    public static class EventListenerService
+    public static IServiceCollection AddEventListeners(this IServiceCollection services, IConfiguration cfg)
     {
-        public static IServiceCollection AddEventListeners(
-            this IServiceCollection services, IConfiguration cfg)
+        services.AddScoped<IEstoqueEventPublisher, EstoqueEventPublisher>();
+
+        services.AddMassTransit(x =>
         {
-            services.AddScoped<IEstoqueEventPublisher, EstoqueEventPublisher>();
+            x.AddConsumers(typeof(OnBaixarEstoque).Assembly);
 
-            services.AddMassTransit(x =>
+            x.UsingRabbitMq((ctx, bus) =>
             {
-                x.AddConsumers(typeof(OnBaixarEstoque).Assembly);
+                bus.Host(new Uri(cfg.GetConnectionString("RabbitMq")
+                    ?? throw new InvalidOperationException("ConnectionStrings:RabbitMq não configurada.")));
 
-                x.UsingRabbitMq((ctx, bus) =>
-                {
-                    bus.Host(new Uri(cfg.GetConnectionString("RabbitMq")
-                        ?? throw new InvalidOperationException(
-                            "ConnectionStrings:RabbitMq não configurada")));
-
-                    bus.ConfigureEndpoints(ctx);
-                });
+                bus.ConfigureEndpoints(ctx);
             });
+        });
 
-            services.AddHostedService<OutboxDispatcherWorker>();
+        services.AddHostedService<OutboxDispatcherWorker>();
 
-            return services;
-        }
+        return services;
     }
 }

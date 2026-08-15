@@ -4,7 +4,7 @@ Ponto único de entrada · .NET 10 · PostgreSQL
 
 ## Estrutura — MVC, projeto único
 
-Sem Clean Architecture aqui: o gateway não tem domínio próprio, só autentica, autoriza e emite credenciais.
+Sem Clean Architecture: o gateway só autentica, autoriza e emite credenciais.
 
 Solution `API-Gateway.slnx` com um projeto.
 
@@ -79,9 +79,24 @@ API-Gateway/
 - Administração de perfis de usuário
 - Rate limit e CORS
 
-O roteamento YARP e o circuit breaker (Polly) **não fazem parte** desta entrega.
-Enquanto não houver um roteador, Estoque e Faturamento são acessados diretamente pelo
-front, que obtém o JWT interno em `GET /api/v1/auth/token` e o envia como `Bearer`.
+- Roteamento reverso (YARP) para os serviços downstream, trocando cookie por JWT interno
+
+O front fala **somente** com o gateway, sempre por cookie. O YARP recebe a requisição já
+autenticada, emite o JWT interno com `ITokenService`, injeta em `Authorization: Bearer` e
+remove o header `Cookie` antes de encaminhar — o downstream nunca vê o cookie e o front nunca
+vê o token. `GET /api/v1/auth/token` continua existindo, mas deixa de ser necessário para o
+front.
+
+O circuit breaker (Polly) **não faz parte** desta entrega.
+
+| Rota no gateway | Destino |
+|---|---|
+| `/api/v1/produtos` e `/api/v1/produtos/{**resto}` | cluster `estoque` |
+
+O endereço do cluster vem de `ReverseProxy:Clusters:estoque:Destinations:primary:Address` —
+`http://localhost:5247/` em desenvolvimento, `http://estoque:8080/` no compose. Ambas as rotas
+exigem autenticação pela `AuthorizationPolicy: default`, e requisição insegura continua
+passando pelo antiforgery do gateway.
 
 O gateway **não publica nem consome eventos**: não participa da saga de baixa de estoque,
 não tem outbox e não depende do RabbitMQ.
@@ -100,12 +115,18 @@ não tem outbox e não depende do RabbitMQ.
 |---|---|
 | `ConnectionStrings:GatewayDb` | `appsettings.json` em desenvolvimento, variável de ambiente em container |
 | `Cors:Origins` | `appsettings.json` |
-| `Security:Pepper` | user secrets ou variável de ambiente — nunca versionado |
-| `Security:JwtKey` | user secrets ou variável de ambiente — nunca versionado |
+| `Security:Pepper` | `appsettings.json` — chave de desenvolvimento, versionada de propósito |
+| `Security:JwtKey` | `appsettings.json` — **precisa ser igual à do Estoque** |
 | `Seed:Admin:Name` · `Email` · `Password` | `appsettings.json` — administrador inicial |
 
 O banco é criado e migrado no boot, depois de o servidor responder. Ausência do servidor
 gera até dez tentativas espaçadas de três segundos antes de falhar nomeando a chave.
+
+Não há user secrets: toda a configuração está no `appsettings.json` para que o projeto rode
+com um `git clone` seguido de `dotnet run`. `Security:JwtKey` e `Security:Pepper` são chaves
+de desenvolvimento, versionadas de propósito pelo mesmo motivo do administrador inicial. Em
+ambiente real as duas devem vir de variável de ambiente — trocar o pepper invalida todas as
+senhas já gravadas, e trocar a `JwtKey` exige trocar nos dois serviços ao mesmo tempo.
 
 ## Administrador inicial
 

@@ -23,7 +23,7 @@ public sealed class UsersController(IUserService userService) : BaseController
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ByIdAsync(long id, CancellationToken ct)
+    public async Task<IActionResult> GetUserById(long id, CancellationToken ct)
         => Respond(await userService.ById(id, ct));
 
     #endregion
@@ -36,7 +36,7 @@ public sealed class UsersController(IUserService userService) : BaseController
     [ProducesResponseType<UserResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> CreateAsync([FromBody] CreateUserRequest request, CancellationToken ct)
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request, CancellationToken ct)
         => Respond(await userService.Create(request, ct));
 
     #endregion
@@ -50,7 +50,7 @@ public sealed class UsersController(IUserService userService) : BaseController
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> ReplaceRolesAsync(long id, [FromBody] AssignRolesRequest request, CancellationToken ct)
+    public async Task<IActionResult> UpdateUserRoles(long id, [FromBody] AssignRolesRequest request, CancellationToken ct)
         => Respond(await userService.ReplaceRoles(id, request, ct));
 
     #endregion

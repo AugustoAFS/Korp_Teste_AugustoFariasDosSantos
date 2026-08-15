@@ -6,9 +6,6 @@
 CREATE EXTENSION IF NOT EXISTS citext;
 ```
 
-Identidade `BY DEFAULT`, e não `ALWAYS`, porque o seed de `roles` insere ids explícitos.
-Nomes de coluna em snake_case, gerados pela convenção do EF a partir das propriedades em PascalCase.
-
 ## users
 
 ```sql
@@ -30,9 +27,6 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX ux_users_email ON users (email);
 ```
 
-`password_hash` guarda o PHC completo do Argon2id; nulo significa usuário sem credencial local.
-O limite de 320 caracteres do e-mail é validado na aplicação — `citext` não carrega tamanho.
-
 ## roles
 
 ```sql
@@ -49,15 +43,6 @@ CREATE TABLE roles (
 CREATE UNIQUE INDEX ux_roles_name ON roles (name);
 ```
 
-Os três perfis são semeados pela migration e reconferidos a cada boot, com ids fixos
-espelhando o enum `DefaultRole`:
-
-| id | name | descrição |
-|---|---|---|
-| 1 | Administrador | Acesso total, inclusive à administração de usuários. |
-| 2 | Gerente | Mantém o cadastro de produtos e acompanha as notas fiscais da equipe. |
-| 3 | Funcionario | Emite notas fiscais. |
-
 ## user_roles
 
 ```sql
@@ -73,11 +58,3 @@ CREATE TABLE user_roles (
 
 CREATE INDEX ix_user_roles_role_id ON user_roles (role_id);
 ```
-
-Tabela de ligação sem chave substituta: a própria combinação `(user_id, role_id)` é a chave.
-
-## Exclusão lógica
-
-As três tabelas carregam `created_at`, `updated_at` e `deleted_at`, preenchidas pelo
-`SaveChangesAsync` do `GatewayDbContext`. Todas as consultas filtram `deleted_at IS NULL`
-por filtro global de query.

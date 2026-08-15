@@ -38,8 +38,7 @@ services:
       ASPNETCORE_HTTP_PORTS: 8080
       ConnectionStrings__GatewayDb: "Host=gateway-db;Port=5432;Database=gateway;Username=emissor;Password=emissor"
       Cors__Origins__0: "http://localhost:4200"
-      Security__JwtKey: ${GATEWAY_JWT_KEY:-}
-      Security__Pepper: ${GATEWAY_PEPPER:-}
+      ReverseProxy__Clusters__estoque__Destinations__primary__Address: "http://estoque:8080/"
     ports:
       - "127.0.0.1:5000:8080"
     networks: [emissor]
@@ -87,6 +86,28 @@ services:
       timeout: 5s
       retries: 12
       start_period: 40s
+    networks: [emissor]
+
+  estoque:
+    build:
+      context: ./API-Estoque
+      dockerfile: Estoque.Api/Dockerfile
+    container_name: emissor-estoque
+    profiles: [app]
+    restart: unless-stopped
+    depends_on:
+      estoque-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__EstoqueDb: "Server=estoque-db,1433;Database=estoque;User Id=sa;Password=Emissor@Dev2026;TrustServerCertificate=True;Encrypt=False"
+      ConnectionStrings__RabbitMq: "amqp://Admin:Admin@rabbitmq:5672/emissor"
+      Cors__Origins__0: "http://localhost:4200"
+    ports:
+      - "127.0.0.1:5247:8080"
     networks: [emissor]
 
   # --------------------------------------------------------------- rabbitmq

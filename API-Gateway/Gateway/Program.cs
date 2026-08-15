@@ -27,6 +27,7 @@ namespace Gateway
                 .AddDatabaseHealthCheck()
                 .AddVersioning()
                 .AddValidationContract()
+                .AddDownstreamProxy(builder.Configuration)
                 .AddDocumentation();
 
             builder.Services.AddControllers();
@@ -56,6 +57,7 @@ namespace Gateway
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapReverseProxy();
             app.MapDatabaseHealthCheck();
             app.MapDocumentation();
 

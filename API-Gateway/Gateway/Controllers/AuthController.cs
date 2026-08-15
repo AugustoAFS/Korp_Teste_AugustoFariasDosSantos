@@ -21,14 +21,14 @@ public sealed class AuthController(IAuthService authService) : BaseController
     [HttpGet("me")]
     [Authorize]
     [ProducesResponseType<SessionResponse>(StatusCodes.Status200OK)]
-    public IActionResult Me()
+    public IActionResult GetSession()
         => Respond(authService.Session());
 
     [HttpGet("token")]
     [Authorize]
     [EnableRateLimiting(RateLimitConfig.CredentialsPolicy)]
     [ProducesResponseType<TokenResponse>(StatusCodes.Status200OK)]
-    public IActionResult Token()
+    public IActionResult GetToken()
         => Respond(authService.Token());
 
     #endregion
@@ -40,13 +40,13 @@ public sealed class AuthController(IAuthService authService) : BaseController
     [IgnoreAntiforgeryToken]
     [EnableRateLimiting(RateLimitConfig.CredentialsPolicy)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
         => Respond(await authService.Login(request, ct));
 
     [HttpPost("logout")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> LogoutAsync()
+    public async Task<IActionResult> Logout()
         => Respond(await authService.Logout());
 
     #endregion

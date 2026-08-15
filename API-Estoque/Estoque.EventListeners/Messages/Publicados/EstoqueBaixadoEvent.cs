@@ -1,12 +1,11 @@
 using MassTransit;
 
-namespace Estoque.EventListeners.Messages.Publicados
-{
-    [MessageUrn("urn:message:emissor:estoque-baixado")]
-    public sealed record EstoqueBaixadoEvent(
-        Guid NotaFiscalId,
-        Guid ProcessamentoId,
-        IReadOnlyList<ItemBaixado> Itens);
+namespace Estoque.EventListeners.Messages.Publicados;
 
-    public sealed record ItemBaixado(Guid ProdutoId, int SaldoNovo);
+[MessageUrn("emissor:estoque-baixado")]
+public sealed record EstoqueBaixadoEvent
+{
+    public long NotaFiscalId { get; init; }
+    public Guid ProcessamentoId { get; init; }
+    public IReadOnlyList<ItemBaixado> Itens { get; init; } = [];
 }

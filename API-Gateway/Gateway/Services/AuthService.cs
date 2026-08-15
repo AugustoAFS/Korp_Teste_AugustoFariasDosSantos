@@ -84,10 +84,12 @@ public sealed class AuthService(
         if (principal?.Identity?.IsAuthenticated != true)
             return Errors.InvalidSession;
 
-        return new SessionResponse(
-            principal.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
-            principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty,
-            principal.FindAll(ClaimTypes.Role).Select(role => role.Value).ToArray());
+        return new SessionResponse
+        {
+            Name = principal.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
+            Email = principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty,
+            Roles = [.. principal.FindAll(ClaimTypes.Role).Select(role => role.Value)]
+        };
     }
 
     public Result<TokenResponse> Token()
@@ -97,7 +99,11 @@ public sealed class AuthService(
         if (principal?.Identity?.IsAuthenticated != true)
             return Errors.InvalidSession;
 
-        return new TokenResponse(tokenService.Issue(principal), TokenService.SecondsToLive);
+        return new TokenResponse
+        {
+            Token = tokenService.Issue(principal),
+            ExpiresIn = TokenService.SecondsToLive
+        };
     }
 
     private static ClaimsPrincipal PrincipalOf(User user)

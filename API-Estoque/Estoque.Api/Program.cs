@@ -1,34 +1,67 @@
+using Estoque.Api.Configurations;
+using Estoque.Api.Data;
+using Estoque.Api.Middlewares;
+using Estoque.ApplicationService.DependencyInjection;
+using Estoque.EventListeners;
+using Estoque.InfraStructure.DependencyInjection;
+using Microsoft.AspNetCore.HttpOverrides;
 
-namespace Estoque.Api
+namespace Estoque.Api;
+
+public class Program
 {
-    public class Program
+    public static async Task Main(string[] args)
     {
-        public static void Main(string[] args)
+        var builder = WebApplication.CreateBuilder(args);
+
+        builder.Host.UseDefaultServiceProvider(options =>
         {
-            var builder = WebApplication.CreateBuilder(args);
+            options.ValidateOnBuild = true;
+            options.ValidateScopes = true;
+        });
 
-            // Add services to the container.
+        builder.Services
+            .AddInfraStructure(builder.Configuration)
+            .AddApplicationService()
+            .AddEventListeners(builder.Configuration)
+            .AddJwtAuthentication(builder.Configuration)
+            .AddFrontCors(builder.Configuration)
+            .AddRateLimiting()
+            .AddDatabaseHealthCheck()
+            .AddVersioning()
+            .AddValidationContract()
+            .AddDocumentation();
 
-            builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+        builder.Services.AddControllers();
+        builder.Services.AddProblemDetails();
 
-            var app = builder.Build();
+        var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-            }
+        await app.PrepareDatabase();
 
+        app.UseForwardedHeaders(new ForwardedHeadersOptions
+        {
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+        });
+
+        app.UseMiddleware<ExceptionMiddleware>();
+
+        if (!app.Environment.IsDevelopment())
+        {
+            app.UseHsts();
             app.UseHttpsRedirection();
-
-            app.UseAuthorization();
-
-
-            app.MapControllers();
-
-            app.Run();
         }
+
+        app.UseRouting();
+        app.UseCors(CorsConfig.Politica);
+        app.UseAuthentication();
+        app.UseRateLimiter();
+        app.UseAuthorization();
+
+        app.MapControllers();
+        app.MapDatabaseHealthCheck();
+        app.MapDocumentation();
+
+        await app.RunAsync();
     }
 }

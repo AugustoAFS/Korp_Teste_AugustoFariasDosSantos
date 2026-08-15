@@ -1,3 +1,7 @@
 namespace Gateway.Dtos.Response;
 
-public sealed record TokenResponse(string Token, int ExpiresIn);
+public sealed record TokenResponse
+{
+    public string Token { get; init; } = string.Empty;
+    public int ExpiresIn { get; init; }
+}
