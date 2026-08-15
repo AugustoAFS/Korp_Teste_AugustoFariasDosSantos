@@ -1,8 +1,8 @@
 using Estoque.Api.Configurations;
-using Estoque.Api.Data;
 using Estoque.Api.Middlewares;
 using Estoque.ApplicationService.DependencyInjection;
 using Estoque.EventListeners;
+using Estoque.InfraStructure.Data;
 using Estoque.InfraStructure.DependencyInjection;
 using Microsoft.AspNetCore.HttpOverrides;
 
@@ -37,7 +37,7 @@ public class Program
 
         var app = builder.Build();
 
-        await app.PrepareDatabase();
+        await app.Services.PrepareDatabase();
 
         app.UseForwardedHeaders(new ForwardedHeadersOptions
         {

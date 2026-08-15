@@ -23,6 +23,8 @@ public static class EventListenerService
                 bus.Host(new Uri(cfg.GetConnectionString("RabbitMq")
                     ?? throw new InvalidOperationException("ConnectionStrings:RabbitMq não configurada.")));
 
+                bus.MessageTopology.SetEntityNameFormatter(new UrnExchangeNameFormatter());
+
                 bus.ConfigureEndpoints(ctx);
             });
         });

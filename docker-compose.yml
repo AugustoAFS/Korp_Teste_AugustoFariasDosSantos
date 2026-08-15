@@ -33,14 +33,36 @@ services:
     depends_on:
       gateway-db:
         condition: service_healthy
+      notaflow:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: 8080
       ConnectionStrings__GatewayDb: "Host=gateway-db;Port=5432;Database=gateway;Username=emissor;Password=emissor"
       Cors__Origins__0: "http://localhost:4200"
       ReverseProxy__Clusters__estoque__Destinations__primary__Address: "http://estoque:8080/"
+      ReverseProxy__Clusters__faturamento__Destinations__primary__Address: "http://faturamento:8080/"
+      ReverseProxy__Clusters__notaflow__Destinations__primary__Address: "http://notaflow:8080/"
     ports:
       - "127.0.0.1:5000:8080"
+    networks: [emissor]
+
+  # --------------------------------------------------------------- notaflow
+  # Sem porta publicada de propósito: o acesso é sempre pelo gateway, na 5000.
+  # Mesma origem evita CORS e mantém o cookie de sessão SameSite=Strict.
+  notaflow:
+    build:
+      context: ./NotaFlow
+      dockerfile: Dockerfile
+    container_name: emissor-notaflow
+    profiles: [app]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     networks: [emissor]
 
   # ------------------------------------------------------------ faturamento
@@ -62,6 +84,28 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+    networks: [emissor]
+
+  faturamento:
+    build:
+      context: ./API-Faturamento
+      dockerfile: Faturamento.Api/Dockerfile
+    container_name: emissor-faturamento
+    profiles: [app]
+    restart: unless-stopped
+    depends_on:
+      faturamento-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__FaturamentoDb: "Host=faturamento-db;Port=5432;Database=faturamento;Username=emissor;Password=emissor"
+      ConnectionStrings__RabbitMq: "amqp://Admin:Admin@rabbitmq:5672/emissor"
+      Cors__Origins__0: "http://localhost:4200"
+    ports:
+      - "127.0.0.1:5108:8080"
     networks: [emissor]
 
   # ---------------------------------------------------------------- estoque

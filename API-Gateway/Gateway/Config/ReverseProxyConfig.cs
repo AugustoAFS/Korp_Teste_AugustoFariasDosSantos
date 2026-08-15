@@ -7,6 +7,8 @@ namespace Gateway.Config;
 
 public static class ReverseProxyConfig
 {
+    public const string FrontCluster = "notaflow";
+
     private const string Section = "ReverseProxy";
     private const string BearerScheme = "Bearer";
 
@@ -20,17 +22,17 @@ public static class ReverseProxyConfig
         services
             .AddReverseProxy()
             .LoadFromConfig(proxy)
-            .AddTransforms(transforms =>
-            {
-                transforms.AddRequestHeaderRemove(HeaderNames.Cookie);
-                transforms.AddRequestTransform(SignInternalToken);
-            });
+            .AddTransforms(transforms => transforms.AddRequestTransform(SignInternalToken));
 
         return services;
     }
 
     private static ValueTask SignInternalToken(RequestTransformContext context)
     {
+        if (ServesStaticFront(context)) return ValueTask.CompletedTask;
+
+        context.ProxyRequest.Headers.Remove(HeaderNames.Cookie);
+
         var principal = context.HttpContext.User;
 
         if (principal.Identity?.IsAuthenticated != true) return ValueTask.CompletedTask;
@@ -42,4 +44,7 @@ public static class ReverseProxyConfig
 
         return ValueTask.CompletedTask;
     }
+
+    private static bool ServesStaticFront(RequestTransformContext context)
+        => context.HttpContext.GetReverseProxyFeature().Route.Config.ClusterId == FrontCluster;
 }
