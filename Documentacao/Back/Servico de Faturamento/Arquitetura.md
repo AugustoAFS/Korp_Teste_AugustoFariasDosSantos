@@ -167,8 +167,10 @@ faz o sistema convergir em dois cenários:
 - O estoque estava fora e o comando ficou na fila. Quando ele volta, consome,
   publica o resultado, e a nota fecha sozinha — o `processing_id` ainda casa.
 - O usuário manda imprimir de novo antes disso. `RestartPrinting` republica com a
-  **mesma** chave e o estoque deduplica pelo `processamento_id`, então o débito
-  nunca acontece duas vezes.
+  **mesma** chave. O estoque não debita de novo — mas também não engole a
+  mensagem: ele **reemite o resultado que já havia decidido**, gravado em
+  `processed_messages.outcome_payload`. Por isso a nota fecha (ou é rejeitada)
+  mesmo que o evento original tenha se perdido de vez no broker.
 
 ## Replicação do catálogo
 

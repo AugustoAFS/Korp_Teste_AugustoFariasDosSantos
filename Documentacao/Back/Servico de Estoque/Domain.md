@@ -49,9 +49,11 @@ CREATE INDEX ix_stock_movements_product ON stock_movements (product_id, occurred
 
 ```sql
 CREATE TABLE processed_messages (
-    message_id   UNIQUEIDENTIFIER  NOT NULL CONSTRAINT pk_processed_messages PRIMARY KEY,
-    type         VARCHAR(100)      NOT NULL,
-    processed_at DATETIMEOFFSET(3) NOT NULL
+    message_id      UNIQUEIDENTIFIER  NOT NULL CONSTRAINT pk_processed_messages PRIMARY KEY,
+    type            VARCHAR(100)      NOT NULL,
+    processed_at    DATETIMEOFFSET(3) NOT NULL,
+    outcome_type    VARCHAR(100)      NULL,   -- evento resultante, gravado na mesma transação da baixa
+    outcome_payload NVARCHAR(MAX)     NULL    -- reemitido se o mesmo processamento chegar de novo
 );
 ```
 

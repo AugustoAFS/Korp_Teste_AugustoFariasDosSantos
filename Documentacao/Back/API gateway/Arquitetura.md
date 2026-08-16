@@ -80,6 +80,8 @@ API-Gateway/
 - Rate limit e CORS
 
 - Roteamento reverso (YARP) para os serviços downstream, trocando cookie por JWT interno
+- Circuit breaker (Polly) por cluster downstream
+- Entrega dos estáticos do front, na mesma origem
 
 O front fala **somente** com o gateway, sempre por cookie. O YARP recebe a requisição já
 autenticada, emite o JWT interno com `ITokenService`, injeta em `Authorization: Bearer` e
@@ -87,15 +89,53 @@ remove o header `Cookie` antes de encaminhar — o downstream nunca vê o cookie
 vê o token. `GET /api/v1/auth/token` continua existindo, mas deixa de ser necessário para o
 front.
 
-O circuit breaker (Polly) **não faz parte** desta entrega.
+## Circuit breaker
 
-| Rota no gateway | Destino |
+`ResilienceConfig` registra **um pipeline Polly por cluster** lido de `ReverseProxy:Clusters`,
+e `ResilientForwarderHttpClientFactory` o encaixa no `HttpMessageHandler` que o YARP usa.
+
+| Parâmetro | Valor |
 |---|---|
-| `/api/v1/produtos` e `/api/v1/produtos/{**resto}` | cluster `estoque` |
+| Proporção de falha | 50% |
+| Janela de amostragem | 20s |
+| Mínimo de requisições | 5 |
+| Tempo aberto | 15s |
+| Timeout (dentro do breaker) | 10s |
 
-O endereço do cluster vem de `ReverseProxy:Clusters:estoque:Destinations:primary:Address` —
-`http://localhost:5247/` em desenvolvimento, `http://estoque:8080/` no compose. Ambas as rotas
-exigem autenticação pela `AuthorizationPolicy: default`, e requisição insegura continua
+O timeout fica **dentro** do breaker de propósito: assim uma requisição que estoura o tempo
+conta como falha e ajuda a abrir o circuito.
+
+Três decisões que valem registro:
+
+- **Por cluster, não global.** Estoque fora não pode derrubar chamada ao Faturamento.
+- **O cluster `notaflow` é isento.** Front fora do ar é outra história, e assinar JWT ou
+  contar falha em arquivo estático não faz sentido.
+- **Sem retry.** O gateway encaminha POST não idempotente, e a saga já tem retentativa na
+  camada de mensagens. Repetir aqui arriscaria duplicar efeito.
+
+Com o circuito aberto o YARP devolveria 502 sem corpo. `MapDownstreamProxy` inspeciona o
+`IForwarderErrorFeature` e reescreve como **503** `ProblemDetails` com `code`
+`service_unavailable` — o contrato que o front espera em `Front/Arquitetura.md`.
+
+Passar um delegate para `MapReverseProxy` substitui o pipeline padrão, então `UseSessionAffinity`,
+`UseLoadBalancing` e `UsePassiveHealthChecks` são readicionados à mão ali.
+
+| Rota no gateway | Destino | Autorização | Ordem |
+|---|---|---|---|
+| `/api/v1/produtos` e `/api/v1/produtos/{**resto}` | cluster `estoque` | `default` | — |
+| `/api/v1/notas` e `/api/v1/notas/{**resto}` | cluster `faturamento` | `default` | — |
+| `/{**resto}` | cluster `notaflow` | `anonymous` | 1000 |
+
+Cada recurso precisa de **duas** rotas, a da coleção e a do item: um catch-all não pode
+dividir segmento com um literal, e `"/api/v1/produtos{**resto}"` derruba o boot com
+`RoutePatternException`.
+
+A rota do front é catch-all com `Order: 1000` para perder para todas as rotas específicas e
+para os controllers do próprio gateway (`auth`, `users`, `health`, `scalar`). Ela é anônima
+de propósito — a tela de login precisa carregar sem sessão.
+
+O endereço de cada cluster vem de `ReverseProxy:Clusters:<id>:Destinations:primary:Address` —
+`localhost` em desenvolvimento, nome do serviço no compose. Requisição insegura continua
 passando pelo antiforgery do gateway.
 
 O gateway **não publica nem consome eventos**: não participa da saga de baixa de estoque,

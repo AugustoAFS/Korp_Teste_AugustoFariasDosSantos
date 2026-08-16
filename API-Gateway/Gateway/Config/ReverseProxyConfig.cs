@@ -1,6 +1,9 @@
 using System.Net.Http.Headers;
+using Gateway.Exceptions;
+using Gateway.Middleware;
 using Gateway.Security.Interfaces;
 using Microsoft.Net.Http.Headers;
+using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
 
 namespace Gateway.Config;
@@ -25,6 +28,28 @@ public static class ReverseProxyConfig
             .AddTransforms(transforms => transforms.AddRequestTransform(SignInternalToken));
 
         return services;
+    }
+
+    public static WebApplication MapDownstreamProxy(this WebApplication app)
+    {
+        app.MapReverseProxy(proxy =>
+        {
+            proxy.UseSessionAffinity();
+            proxy.UseLoadBalancing();
+            proxy.UsePassiveHealthChecks();
+            proxy.Use(ReportUnavailable);
+        });
+
+        return app;
+    }
+
+    private static async Task ReportUnavailable(HttpContext context, Func<Task> next)
+    {
+        await next();
+
+        if (context.Features.Get<IForwarderErrorFeature>() is null) return;
+
+        await ProblemResponse.Write(context, Errors.ServiceUnavailable);
     }
 
     private static ValueTask SignInternalToken(RequestTransformContext context)

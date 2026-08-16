@@ -30,12 +30,12 @@ public sealed class StockDebitService(
         try
         {
             if (await messages.AlreadyProcessed(processingId, ct))
-                return await SkipDuplicate(processingId, ct);
+                return await ReplayOutcome(processingId, ct);
 
             await messages.Mark(processingId, MessageType, ct);
 
             if (!await unitOfWork.SaveWithoutConflict(ct))
-                return await SkipDuplicate(processingId, ct);
+                return await SkipConcurrent(processingId, ct);
 
             await unitOfWork.CreateSavepoint(BeforeDebits, ct);
 
@@ -60,11 +60,29 @@ public sealed class StockDebitService(
         }
     }
 
-    private async Task<DebitResult> SkipDuplicate(Guid processingId, CancellationToken ct)
+    private async Task<DebitResult> ReplayOutcome(Guid processingId, CancellationToken ct)
+    {
+        var outcome = await messages.Outcome(processingId, ct);
+
+        if (outcome is null) return await SkipConcurrent(processingId, ct);
+
+        await publisher.Republish(outcome, ct);
+        await unitOfWork.SaveWithoutConflict(ct);
+        await unitOfWork.Commit(ct);
+
+        logger.LogInformation(
+            "Baixa já aplicada: resultado {Resultado} do processamento {Processamento} reemitido",
+            outcome.Type, processingId);
+
+        return DebitResult.Ok([]);
+    }
+
+    private async Task<DebitResult> SkipConcurrent(Guid processingId, CancellationToken ct)
     {
         await unitOfWork.Rollback(ct);
 
-        logger.LogInformation("Baixa ignorada: processamento {Processamento} já aplicado", processingId);
+        logger.LogInformation(
+            "Baixa ignorada: processamento {Processamento} em andamento em outro consumo", processingId);
 
         return DebitResult.Ok([]);
     }
@@ -76,7 +94,10 @@ public sealed class StockDebitService(
 
         var error = Errors.InsufficientBalance;
 
-        await publisher.PublishStockRejected(invoiceId, processingId, item.ProductId, error.Detail, ct);
+        var outcome = await publisher.PublishStockRejected(
+            invoiceId, processingId, item.ProductId, error.Detail, ct);
+
+        await messages.RecordOutcome(processingId, outcome, ct);
         await unitOfWork.SaveWithoutConflict(ct);
         await unitOfWork.Commit(ct);
 
@@ -107,7 +128,9 @@ public sealed class StockDebitService(
                 userId))],
             ct);
 
-        await publisher.PublishStockDebited(invoiceId, processingId, balances, ct);
+        var outcome = await publisher.PublishStockDebited(invoiceId, processingId, balances, ct);
+
+        await messages.RecordOutcome(processingId, outcome, ct);
         await unitOfWork.SaveWithoutConflict(ct);
         await unitOfWork.Commit(ct);
 

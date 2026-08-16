@@ -8,7 +8,7 @@ namespace Estoque.EventListeners.Publishers;
 
 public sealed class EstoqueEventPublisher(IOutboxRepository outbox) : IEstoqueEventPublisher
 {
-    public Task PublishProductCreated(
+    public Task<StoredEvent> PublishProductCreated(
         Guid produtoId, string codigo, string descricao, bool ativo, CancellationToken ct)
         => Store(
             new ProdutoCriadoEvent
@@ -21,7 +21,7 @@ public sealed class EstoqueEventPublisher(IOutboxRepository outbox) : IEstoqueEv
             },
             ct);
 
-    public Task PublishProductUpdated(
+    public Task<StoredEvent> PublishProductUpdated(
         Guid produtoId, string codigo, string descricao, bool ativo, CancellationToken ct)
         => Store(
             new ProdutoAtualizadoEvent
@@ -34,7 +34,7 @@ public sealed class EstoqueEventPublisher(IOutboxRepository outbox) : IEstoqueEv
             },
             ct);
 
-    public Task PublishStockDebited(
+    public Task<StoredEvent> PublishStockDebited(
         long notaFiscalId,
         Guid processamentoId,
         IReadOnlyList<UpdatedBalance> itens,
@@ -52,7 +52,7 @@ public sealed class EstoqueEventPublisher(IOutboxRepository outbox) : IEstoqueEv
             },
             ct);
 
-    public Task PublishStockRejected(
+    public Task<StoredEvent> PublishStockRejected(
         long notaFiscalId, Guid processamentoId, Guid produtoId, string motivo, CancellationToken ct)
         => Store(
             new EstoqueRejeitadoEvent
@@ -64,6 +64,19 @@ public sealed class EstoqueEventPublisher(IOutboxRepository outbox) : IEstoqueEv
             },
             ct);
 
-    private Task Store<T>(T evento, CancellationToken ct) where T : notnull
-        => outbox.Add(typeof(T).Name, JsonSerializer.Serialize(evento), ct);
+    public Task Republish(StoredEvent evento, CancellationToken ct)
+        => outbox.Add(evento.Type, evento.Payload, ct);
+
+    private async Task<StoredEvent> Store<T>(T evento, CancellationToken ct) where T : notnull
+    {
+        var armazenado = new StoredEvent
+        {
+            Type = typeof(T).Name,
+            Payload = JsonSerializer.Serialize(evento)
+        };
+
+        await outbox.Add(armazenado.Type, armazenado.Payload, ct);
+
+        return armazenado;
+    }
 }

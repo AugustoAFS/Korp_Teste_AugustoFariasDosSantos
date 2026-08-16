@@ -15,5 +15,7 @@ public sealed class ProcessedMessageConfiguration : IEntityTypeConfiguration<Pro
         builder.Property(m => m.MessageId).ValueGeneratedNever();
         builder.Property(m => m.Type).HasColumnType("varchar(100)").IsRequired();
         builder.Property(m => m.ProcessedAt).HasColumnType("datetimeoffset(3)").IsRequired();
+        builder.Property(m => m.OutcomeType).HasColumnType("varchar(100)");
+        builder.Property(m => m.OutcomePayload).HasColumnType("nvarchar(max)");
     }
 }

@@ -90,6 +90,14 @@ public static class Errors
         Detail = "Aguarde alguns instantes antes de tentar novamente."
     };
 
+    public static readonly Error ServiceUnavailable = new()
+    {
+        Code = "service_unavailable",
+        Title = "Serviço indisponível.",
+        Status = StatusCodes.Status503ServiceUnavailable,
+        Detail = "O serviço não respondeu. Sua nota continua aberta — tente novamente em instantes."
+    };
+
     public static readonly Error InternalError = new()
     {
         Code = "internal_error",
