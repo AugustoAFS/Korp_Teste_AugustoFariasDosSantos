@@ -1,0 +1,6 @@
+.tags-perfis { display: flex; gap: 4px; flex-wrap: wrap; }
+.tag-perfil { padding: 2px 6px; border-radius: 4px; background: var(--surface-2); font-size: var(--t-xs); font-family: var(--font-mono); }
+
+.campo-perfis { display: flex; flex-direction: column; gap: 6px; margin: var(--s-1) 0; }
+.rot-perfis { font-size: var(--t-xs); font-weight: 600; color: var(--fg-muted); }
+.chk { display: flex; align-items: center; gap: 6px; font-size: var(--t-sm); cursor: pointer; }

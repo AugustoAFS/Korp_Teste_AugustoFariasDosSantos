@@ -44,6 +44,10 @@ Each backend service has its own `.slnx` solution; there is no top-level solutio
 
 - **The circuit breaker is per cluster, and the front is exempt.** `ResilienceConfig` registers one Polly pipeline per `ReverseProxy:Clusters` key (50% failure ratio over a 20s window, minimum 5 requests, 15s open, 10s timeout inside the breaker so a timeout counts as a failure). `ResilientForwarderHttpClientFactory` wraps YARP's handler with it, skipping `notaflow` — a dead front must not open a breaker, and Estoque being down must never block Faturamento. **There is deliberately no retry**: the gateway proxies non-idempotent POSTs, and the saga already retries at the message layer. When the breaker is open, YARP would return a bodyless 502, so `MapDownstreamProxy` inspects `IForwarderErrorFeature` and rewrites it as a 503 `ProblemDetails` with code `service_unavailable` — the contract `Documentacao/Front/Arquitetura.md` expects. Passing a delegate to `MapReverseProxy` replaces the default pipeline, so session affinity, load balancing and passive health checks are re-added by hand there.
 
+- **`InvoiceStatus` goes over the wire as a string.** Faturamento adds `JsonStringEnumConverter` to the MVC JSON options, so the front gets `"status": "Open"` and a real TypeScript union instead of a numeric mirror it has to keep in sync. This is scoped to `AddControllers().AddJsonOptions(...)` on purpose — the outbox serializes with a plain `JsonSerializer.Serialize`, untouched by MVC options, and no message contract carries an enum anyway. Query binding still accepts both `?status=Open` and `?status=1`.
+
+- **Endpoints that mutate an invoice return the whole invoice**, including `DELETE .../itens/{itemId}` (200, not 204). The front refreshes the screen from one call. `DELETE /notas/{id}` is the exception and stays 204 — there it really is the resource being removed.
+
 - **Cross-service references carry no FK** (e.g. `NotaFiscalId`, `ProdutoId`, `UsuarioId` from a JWT claim). Snapshots (product code/description, emitter name) are copied into the invoice so it stays stable if the source changes.
 
 ## Commands

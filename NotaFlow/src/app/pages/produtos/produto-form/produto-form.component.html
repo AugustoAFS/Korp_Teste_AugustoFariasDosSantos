@@ -1,0 +1,34 @@
+<div class="veu" (click)="cancelar.emit()"></div>
+<div class="dialogo" role="dialog" aria-modal="true" aria-label="Produto">
+  <h2>{{ produto() ? 'Editar produto' : 'Novo produto' }}</h2>
+
+  <form (ngSubmit)="aoSubmeter()">
+    <label for="cod">Código</label>
+    <input id="cod" name="cod" maxlength="50" required
+           [(ngModel)]="code" />
+
+    <label for="desc">Descrição</label>
+    <input id="desc" name="desc" maxlength="200" required
+           [(ngModel)]="description" />
+
+    @if (produto()) {
+      <label class="linha">
+        <input type="checkbox" name="ativo"
+               [(ngModel)]="active" />
+        Produto ativo
+      </label>
+      <p class="dica">O saldo não muda por edição de cadastro — só pela impressão de uma nota.</p>
+    } @else {
+      <label for="saldo">Saldo inicial</label>
+      <input id="saldo" name="saldo" type="number" inputmode="numeric" min="0" required
+             [(ngModel)]="balance" />
+    }
+
+    <div class="acoes-dialogo">
+      <button type="button" class="cancelar" (click)="cancelar.emit()">Cancelar</button>
+      <button type="submit" class="primario" [disabled]="salvando() || !code || !description">
+        {{ salvando() ? 'Salvando' : 'Salvar' }}
+      </button>
+    </div>
+  </form>
+</div>

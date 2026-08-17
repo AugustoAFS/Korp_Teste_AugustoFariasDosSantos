@@ -170,7 +170,7 @@ public sealed class InvoiceService(
         return new InvoiceResponse(invoice);
     }
 
-    public async Task<Result> DeleteInvoiceItem(long id, long itemId, CancellationToken ct)
+    public async Task<Result<InvoiceResponse>> DeleteInvoiceItem(long id, long itemId, CancellationToken ct)
     {
         var invoice = await Visible(id, ct);
 
@@ -196,7 +196,7 @@ public sealed class InvoiceService(
         await unitOfWork.SaveWithoutConflict(ct);
 
         logger.LogInformation("Item {Item} removido da nota {Nota}", itemId, id);
-        return Result.NoContent();
+        return new InvoiceResponse(invoice);
     }
 
     private async Task<Invoice?> Visible(long id, CancellationToken ct)

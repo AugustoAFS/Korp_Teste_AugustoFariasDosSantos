@@ -6,6 +6,8 @@ namespace Gateway.Services.Interfaces;
 
 public interface IUserService
 {
+    Task<Result<PagedResult<UserResponse>>> GetUsers(UserFilterRequest filter, CancellationToken ct);
+
     Task<Result<UserResponse>> ById(long userId, CancellationToken ct);
 
     Task<Result<UserResponse>> Create(CreateUserRequest request, CancellationToken ct);

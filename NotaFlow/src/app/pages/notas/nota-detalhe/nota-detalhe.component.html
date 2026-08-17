@@ -1,0 +1,135 @@
+@if (carga.error()) {
+  <div class="falha" role="alert">
+    <p>Nota não encontrada, ou ela pertence a outro usuário.</p>
+    <a class="primario" routerLink="/notas">Voltar para as notas</a>
+  </div>
+} @else if (atual(); as n) {
+  <div class="faixa" aria-hidden="true"></div>
+
+  <header class="cabeca">
+    <h1>Nota fiscal nº {{ n.number }}</h1>
+    <span class="selo" [class]="estado().classe">{{ estado().rotulo }}</span>
+
+    <div class="acoes">
+      <a routerLink="/notas">Voltar</a>
+      <button type="button" class="perigo" [disabled]="!editavel() || ocupado()" (click)="excluirNota()">
+        Excluir nota
+      </button>
+    </div>
+
+    <button type="button" class="primario" [disabled]="!editavel() || n.items.length === 0 || ocupado()"
+            (click)="imprimir()">
+      @if (imprimindo()) { <span class="spin"></span> Processando } @else { Imprimir }
+    </button>
+  </header>
+
+  <p class="meta">
+    Emitida por <b>{{ n.issuedByUserName }}</b> · {{ n.createdAt | date:'dd/MM/yyyy HH:mm' }}
+    @if (n.closedAt) { · fechada em {{ n.closedAt | date:'dd/MM/yyyy HH:mm' }} }
+  </p>
+
+  @if (n.lastError && !n.printing) {
+    <div class="aviso" role="alert">
+      <b>{{ n.lastError }}</b>
+      <span>A nota continua aberta. Ajuste os itens e mande imprimir de novo.</span>
+    </div>
+  }
+
+  @if (editavel()) {
+    <section class="incluir">
+      <div class="campo-busca">
+        <label for="prod">Adicionar produto</label>
+        <input id="prod" name="prod" type="text" autocomplete="off"
+               role="combobox" aria-autocomplete="list" [attr.aria-expanded]="listaAberta()"
+               placeholder="Escolha um produto ou digite para filtrar"
+               [ngModel]="escolhido() ? escolhido()!.code + ' · ' + escolhido()!.description : termo()"
+               (ngModelChange)="digitou($event)"
+               (focus)="abrirLista()"
+               (blur)="fecharLista()"
+               (keydown.escape)="listaAberta.set(false)" />
+
+        <button type="button" class="abre-lista" tabindex="-1"
+                [attr.aria-label]="listaAberta() ? 'Fechar lista' : 'Ver produtos'"
+                (mousedown)="$event.preventDefault(); listaAberta.set(!listaAberta())">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="m4 6 4 4 4-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+
+        @if (listaAberta()) {
+          <ul class="sugestoes" role="listbox">
+            @if (catalogo.isLoading()) {
+              <li class="aviso-lista">Carregando produtos...</li>
+            } @else if (disponiveis().length === 0) {
+              <li class="aviso-lista">
+                @if (termo().length >= 2) {
+                  Nenhum produto encontrado para "{{ termo() }}".
+                } @else {
+                  Nenhum produto disponível. Cadastre um em Produtos.
+                }
+              </li>
+            } @else {
+              @for (p of disponiveis(); track p.id) {
+                <li role="option" [attr.aria-selected]="escolhido()?.id === p.id">
+                  <button type="button" (mousedown)="$event.preventDefault(); escolher(p)">
+                    <b>{{ p.code }}</b>
+                    <span class="desc">{{ p.description }}</span>
+                    <em [class.sem-saldo]="p.balance === 0">{{ p.balance }} un</em>
+                  </button>
+                </li>
+              }
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="campo-qtd">
+        <label for="qtd">Quantidade</label>
+        <input id="qtd" name="qtd" type="number" min="1" inputmode="numeric"
+               [ngModel]="quantidade()" (ngModelChange)="quantidade.set(+$event)" />
+      </div>
+
+      <button type="button" class="primario" [disabled]="!escolhido() || ocupado()" (click)="adicionar()">
+        Adicionar
+      </button>
+    </section>
+  }
+
+  @if (n.items.length === 0) {
+    <p class="vazio-simples">Nenhum item. Adicione ao menos um produto para poder imprimir.</p>
+  } @else {
+    <div class="tabela-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Código</th>
+            <th scope="col">Descrição</th>
+            <th scope="col" class="dir">Quantidade</th>
+            @if (editavel()) { <th scope="col"><span class="apenas-leitor">Ações</span></th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (i of n.items; track i.id) {
+            <tr>
+              <td><span class="codigo">{{ i.productCode }}</span></td>
+              <td><span>{{ i.productDescription }}</span></td>
+              <td class="dir">
+                @if (editavel()) {
+                  <input class="qtd-linha" type="number" min="1" inputmode="numeric" [value]="i.quantity"
+                         (change)="alterar(i.id, +$any($event.target).value)" aria-label="Quantidade" />
+                } @else {
+                  <span class="numerico">{{ i.quantity }}</span>
+                }
+              </td>
+              @if (editavel()) {
+                <td class="acoes">
+                  <button type="button" class="perigo" (click)="remover(i.id, i.productCode)">Remover</button>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

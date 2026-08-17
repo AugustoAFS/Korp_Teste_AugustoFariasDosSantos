@@ -19,5 +19,5 @@ public interface IInvoiceService
     Task<Result<InvoiceResponse>> UpdateInvoiceItem(
         long id, long itemId, UpdateInvoiceItemRequest request, CancellationToken ct);
 
-    Task<Result> DeleteInvoiceItem(long id, long itemId, CancellationToken ct);
+    Task<Result<InvoiceResponse>> DeleteInvoiceItem(long id, long itemId, CancellationToken ct);
 }

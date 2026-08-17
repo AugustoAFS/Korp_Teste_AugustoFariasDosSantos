@@ -1,0 +1,38 @@
+<div class="tela">
+  <section class="cartao">
+    <div class="marca">
+      <app-logo [tamanho]="40" />
+      <div>
+        <h1>Emissor NF</h1>
+        <p class="sub">Cadastre produtos, emita notas e acompanhe a baixa de estoque.</p>
+      </div>
+    </div>
+
+    <div class="demo">
+      <p class="rot">Acesso de teste</p>
+      <p class="par"><code>admin@admin.com</code> · <code>Admin123!</code></p>
+      <button type="button" class="preencher" (click)="preencher()">Preencher e entrar</button>
+    </div>
+
+    <form (ngSubmit)="entrar()">
+      <label for="email">E-mail</label>
+      <input
+        id="email" name="email" type="email" autocomplete="username"
+        [(ngModel)]="email" required [disabled]="enviando()" />
+
+      <label for="senha">Senha</label>
+      <input
+        id="senha" name="senha" type="password" autocomplete="current-password"
+        [(ngModel)]="senha" required [disabled]="enviando()" />
+
+      @if (erro(); as mensagem) {
+        <p class="erro" role="alert">{{ mensagem }}</p>
+      }
+
+      <button type="submit" class="entrar" [disabled]="enviando() || !email() || !senha()">
+        @if (enviando()) { <span class="spin"></span> }
+        {{ enviando() ? 'Entrando' : 'Entrar' }}
+      </button>
+    </form>
+  </section>
+</div>

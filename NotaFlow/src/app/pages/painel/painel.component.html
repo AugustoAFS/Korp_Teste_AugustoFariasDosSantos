@@ -1,0 +1,66 @@
+<header class="cabeca">
+  <h1>Painel geral</h1>
+  <p class="meta">Visão agregada de produtos e notas fiscais</p>
+</header>
+
+<div id="cartoes-resumo" class="grid-cards">
+  <div class="card">
+    <span class="titulo">Produtos cadastrados</span>
+    <b class="valor">{{ totalProdutos() }}</b>
+    <span class="sub">Saldo total: {{ saldoTotal() }} un</span>
+  </div>
+
+  <div class="card">
+    <span class="titulo">Notas fiscais</span>
+    <b class="valor">{{ totalNotas() }}</b>
+    <span class="sub">{{ fechadas() }} fechada(s) · {{ abertas() }} aberta(s)</span>
+  </div>
+
+  <div class="card" [class.alerta]="baixos().length > 0">
+    <span class="titulo">Estoque baixo (≤ 10 un)</span>
+    <b class="valor">{{ baixos().length }}</b>
+    <span class="sub">produtos precisam de reposição</span>
+  </div>
+</div>
+
+<section class="secao-barras">
+  <h2>Situação das notas</h2>
+  <div class="barras">
+    @for (b of barras(); track b.rotulo) {
+      <div class="linha-barra">
+        <span class="rotulo">{{ b.rotulo }} ({{ b.valor }})</span>
+        <div class="trilho">
+          <div class="preenchimento" [class]="b.classe" [style.width.%]="b.largura"></div>
+        </div>
+      </div>
+    }
+  </div>
+</section>
+
+<section class="secao-ultimas">
+  <div class="topo-secao">
+    <h2>Últimas notas</h2>
+    <a routerLink="/notas" class="link-ver">Ver todas</a>
+  </div>
+
+  <div class="tabela-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Nº</th>
+          <th scope="col">Emitente</th>
+          <th scope="col">Itens</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (n of ultimas(); track n.id) {
+          <tr>
+            <td><a [routerLink]="['/notas', n.id]"><b>{{ n.number }}</b></a></td>
+            <td>{{ n.issuedByUserName }}</td>
+            <td>{{ n.items.length }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

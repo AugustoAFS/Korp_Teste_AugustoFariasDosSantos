@@ -89,7 +89,7 @@ A ausência do `ngOnDestroy` é deliberada: o teardown das inscrições fica com
 | Interceptors | `catchError` · `map` | `HttpInterceptorFn` opera sobre Observable |
 | Carga paralela | `forkJoin` | nota e catálogo juntos na tela de detalhe |
 
-O polling é o caso principal. `switchMap` descarta resposta atrasada se o próximo tick sair antes; `takeWhile` com `inclusive = true` encerra já entregando o estado final. Intervalo de 1,5s, encerrado quando `processamentoId` volta a `null`.
+O polling é o caso principal. `switchMap` descarta resposta atrasada se o próximo tick sair antes; `takeWhile` com `inclusive = true` encerra já entregando o estado final. Intervalo de 1,5s, encerrado quando **`printing` vira `false`** — nunca por `processingId`, que permanece preenchido numa impressão expirada e faria o polling rodar para sempre. Ver a tabela de estados em [Domain.md](Domain.md).
 
 **RxJS para o fluxo, signal para o template** — a conversão acontece na borda do componente, com `toSignal`.
 
@@ -127,7 +127,7 @@ Um `erroInterceptor` global captura toda falha HTTP, traduz para linguagem de us
 
 | Status | Mensagem |
 |---|---|
-| 503 | "Serviço de estoque indisponível. Sua nota continua aberta — tente novamente em instantes." |
+| 503 | `service_unavailable` — circuit breaker do gateway aberto. Texto vem do `detail`: "O serviço não respondeu. Sua nota continua aberta — tente novamente em instantes." |
 | 429 | "Muitas requisições. Aguarde alguns instantes." — usa o header `Retry-After` |
 | 409 | motivo do `ProblemDetails` (nota já fechada, conflito de concorrência) |
 | 422 | erro de validação de domínio |

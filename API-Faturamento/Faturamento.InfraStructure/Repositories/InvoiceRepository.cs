@@ -17,8 +17,17 @@ public sealed class InvoiceRepository(FaturamentoDbContext context) : IInvoiceRe
         if (onlyUserId is not null)
             query = query.Where(i => i.IssuedByUserId == onlyUserId);
 
-        if (filter.Status is not null)
-            query = query.Where(i => i.Status == filter.Status);
+        query = filter.Situation switch
+        {
+            InvoiceSituation.Open => query.Where(i =>
+                i.Status == InvoiceStatus.Open && i.ProcessingId == null && i.LastError == null),
+            InvoiceSituation.Printing => query.Where(i =>
+                i.Status == InvoiceStatus.Open && i.ProcessingId != null && i.LastError == null),
+            InvoiceSituation.Pending => query.Where(i =>
+                i.Status == InvoiceStatus.Open && i.LastError != null),
+            InvoiceSituation.Closed => query.Where(i => i.Status == InvoiceStatus.Closed),
+            _ => query
+        };
 
         var total = await query.CountAsync(ct);
 

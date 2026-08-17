@@ -13,5 +13,5 @@ public sealed record InvoiceFilterRequest
     [Range(1, MaxSize, ErrorMessage = "O tamanho deve estar entre 1 e 100.")]
     public int Size { get; init; } = 20;
 
-    public InvoiceStatus? Status { get; init; }
+    public InvoiceSituation? Situation { get; init; }
 }

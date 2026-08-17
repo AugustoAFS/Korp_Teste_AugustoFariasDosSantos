@@ -1,0 +1,123 @@
+.casca { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+
+.topo {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: var(--s-1);
+  min-height: var(--s-6); padding: var(--s-1) var(--s-2);
+  background: var(--surface);
+  border-bottom: var(--d-bw) solid var(--d-edge);
+}
+@media (min-width: 768px) { .topo { padding: var(--s-1) var(--s-3); } }
+
+.recolher {
+  display: none;
+  width: var(--s-5); height: var(--s-5);
+  border: 0; background: transparent; color: var(--fg-muted); cursor: pointer;
+  svg { width: 18px; height: 18px; }
+}
+@media (min-width: 768px) { .recolher { display: grid; place-items: center; } }
+
+.marca {
+  display: flex; align-items: center; gap: var(--s-1);
+  margin-right: auto; text-decoration: none; color: var(--fg);
+  font: 700 var(--t-sm)/1 var(--font-mono); letter-spacing: .04em;
+  span { display: none; }
+}
+@media (min-width: 600px) { .marca span { display: inline; } }
+
+.acao {
+  min-height: var(--s-5); padding: 0 var(--s-2);
+  border: var(--d-bw) solid var(--d-edge); border-radius: var(--d-radius);
+  background: transparent; color: var(--fg-muted); cursor: pointer;
+  font: 600 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase;
+  transition: background var(--d-speed) var(--ease-out), color var(--d-speed) var(--ease-out);
+
+  &:hover { background: var(--d-tint); color: var(--fg); }
+  &.ligado { background: var(--d-solid); border-color: var(--d-solid); color: #fff; }
+}
+
+.usuario { display: none; flex-direction: column; line-height: 1.2; padding: 0 var(--s-1); }
+@media (min-width: 900px) { .usuario { display: flex; } }
+.nome { font-size: var(--t-xs); font-weight: 600; }
+.perfil { font: 500 10px/1.4 var(--font-mono); letter-spacing: .08em; color: var(--fg-subtle); }
+
+.corpo { flex: 1; display: flex; min-height: 0; }
+
+.lateral { display: none; }
+
+@media (min-width: 768px) {
+  .lateral {
+    display: flex; flex-direction: column; gap: 2px;
+    width: 224px; flex-shrink: 0;
+    padding: var(--s-2) var(--s-1);
+    background: var(--surface-2);
+    border-right: var(--d-bw) solid var(--d-edge);
+    transition: width var(--d-speed) var(--ease-out);
+  }
+  .casca.recolhida .lateral { width: var(--s-8); }
+  .casca.recolhida .rot,
+  .casca.recolhida .grupo { display: none; }
+  .casca.recolhida .item { justify-content: center; padding: 0; }
+}
+
+.grupo {
+  margin: 0; padding: var(--s-1);
+  font: 700 9px/1 var(--font-mono); letter-spacing: .18em; text-transform: uppercase;
+  color: var(--fg-subtle); white-space: nowrap;
+}
+
+.item {
+  display: flex; align-items: center; gap: var(--s-2);
+  min-height: var(--s-6); padding: 0 var(--s-1); width: 100%;
+  border: var(--d-bw) solid transparent; border-radius: var(--d-radius);
+  background: transparent; color: var(--fg-muted); cursor: pointer;
+  text-decoration: none; text-align: left; white-space: nowrap; overflow: hidden;
+  font-family: var(--font-sans); font-size: var(--t-sm);
+  transition: background var(--d-speed) var(--ease-out), color var(--d-speed) var(--ease-out);
+
+  svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  &:hover { background: var(--d-tint); color: var(--d-ink); }
+
+  &.ativo {
+    background: var(--d-solid);
+    border-color: var(--d-solid);
+    border-width: var(--d-bw-strong);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: var(--d-lift);
+  }
+}
+
+.rodape { margin-top: auto; }
+
+.conteudo {
+  flex: 1; min-width: 0;
+  padding: var(--s-2) var(--s-2) calc(var(--s-6) + var(--s-3));
+}
+@media (min-width: 768px) { .conteudo { padding: var(--s-3); } }
+
+.inferior {
+  position: fixed; inset: auto 0 0;
+  z-index: 40;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--surface);
+  border-top: var(--d-bw) solid var(--d-edge);
+
+  a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-height: var(--s-6); text-decoration: none; color: var(--fg-subtle);
+    font: 600 9px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase;
+    position: relative;
+
+    svg { width: 18px; height: 18px; }
+
+    &.ativo { color: var(--d-ink); }
+    &.ativo::after {
+      content: ''; position: absolute; inset: auto 22% 0; height: 3px; background: var(--d-accent);
+    }
+  }
+}
+@media (min-width: 768px) { .inferior { display: none; } }

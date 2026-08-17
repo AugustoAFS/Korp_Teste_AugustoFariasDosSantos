@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Faturamento.Api.Configurations;
 using Faturamento.Api.Middlewares;
 using Faturamento.ApplicationService.DependencyInjection;
@@ -32,7 +33,11 @@ public class Program
             .AddValidationContract()
             .AddDocumentation();
 
-        builder.Services.AddControllers();
+        builder.Services
+            .AddControllers()
+            .AddJsonOptions(options =>
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
         builder.Services.AddProblemDetails();
 
         var app = builder.Build();

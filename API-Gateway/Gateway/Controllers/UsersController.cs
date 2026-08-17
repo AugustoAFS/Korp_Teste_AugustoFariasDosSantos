@@ -17,6 +17,14 @@ public sealed class UsersController(IUserService userService) : BaseController
 {
     #region GET's
 
+    [HttpGet]
+    [Authorize(Roles = $"{nameof(DefaultRole.Administrador)},{nameof(DefaultRole.Gerente)}")]
+    [ProducesResponseType<PagedResult<UserResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetUsers([FromQuery] UserFilterRequest filter, CancellationToken ct)
+        => Respond(await userService.GetUsers(filter, ct));
+
     [HttpGet("{id:long}")]
     [Authorize]
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]

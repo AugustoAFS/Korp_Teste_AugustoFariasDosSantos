@@ -1,0 +1,113 @@
+<header class="cabeca">
+  <h1>Usuários do sistema</h1>
+
+  <button id="btn-novo-usuario" type="button" class="primario" (click)="novo()">
+    Novo usuário
+  </button>
+</header>
+
+@if (dados.error()) {
+  <div class="falha" role="alert">
+    <p>Não foi possível carregar os usuários.</p>
+    <button type="button" (click)="dados.reload()">Tentar novamente</button>
+  </div>
+} @else if (!dados.isLoading() && dados.value()?.items?.length === 0) {
+  <app-empty-state titulo="Nenhum usuário encontrado"
+                   explicacao="Cadastre um usuário para gerenciar acessos."
+                   acao="Cadastrar usuário"
+                   (acionar)="novo()">
+  </app-empty-state>
+} @else {
+  <div class="tabela-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Nome</th>
+          <th scope="col">E-mail</th>
+          <th scope="col">Perfis</th>
+          <th scope="col" class="dir">Ações</th>
+        </tr>
+      </thead>
+      <tbody [appSkeleton]="dados.isLoading()">
+        @for (u of linhas(); track $index) {
+          <tr>
+            <td><b>{{ u?.name }}</b></td>
+            <td><span>{{ u?.email }}</span></td>
+            <td>
+              <div class="tags-perfis">
+                @for (r of u?.roles ?? []; track r) {
+                  <span class="tag-perfil">{{ r }}</span>
+                }
+              </div>
+            </td>
+            <td class="dir">
+              @if (u) {
+                <button type="button" (click)="editarPerfis(u)">Editar perfis</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p class="rodape">{{ dados.value()?.total ?? 0 }} usuário(s)</p>
+}
+
+@if (aberto()) {
+  <div class="veu" (click)="aberto.set(false)"></div>
+  <div class="dialogo" role="dialog" aria-modal="true" aria-label="Novo Usuário">
+    <h2>Novo usuário</h2>
+
+    <form (ngSubmit)="criar()">
+      <label for="nome">Nome</label>
+      <input id="nome" name="nome" required [ngModel]="form().name" (ngModelChange)="campo('name', $event)" />
+
+      <label for="email">E-mail</label>
+      <input id="email" name="email" type="email" required [ngModel]="form().email" (ngModelChange)="campo('email', $event)" />
+
+      <label for="senha">Senha inicial</label>
+      <input id="senha" name="senha" type="password" required [ngModel]="form().password" (ngModelChange)="campo('password', $event)" />
+
+      <div class="campo-perfis">
+        <span class="rot-perfis">Perfis de acesso</span>
+        @for (p of perfis; track p) {
+          <label class="chk">
+            <input type="checkbox" [checked]="form().roles.includes(p)" (change)="alternarPerfil(p)" />
+            {{ p }}
+          </label>
+        }
+      </div>
+
+      <div class="acoes-dialogo">
+        <button type="button" class="cancelar" (click)="aberto.set(false)">Cancelar</button>
+        <button type="submit" class="primario" [disabled]="salvando() || !form().name || !form().email || !form().password || form().roles.length === 0">
+          {{ salvando() ? 'Cadastrando' : 'Cadastrar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (editando(); as userEd) {
+  <div class="veu" (click)="editando.set(null)"></div>
+  <div class="dialogo" role="dialog" aria-modal="true" aria-label="Editar Perfis">
+    <h2>Perfis de {{ userEd.name }}</h2>
+
+    <div class="campo-perfis">
+      @for (p of perfis; track p) {
+        <label class="chk">
+          <input type="checkbox" [checked]="perfisEdicao().includes(p)" (change)="alternarEdicao(p)" />
+          {{ p }}
+        </label>
+      }
+    </div>
+
+    <div class="acoes-dialogo">
+      <button type="button" class="cancelar" (click)="editando.set(null)">Cancelar</button>
+      <button type="button" class="primario" [disabled]="salvando() || perfisEdicao().length === 0" (click)="salvarPerfis()">
+        {{ salvando() ? 'Salvando' : 'Salvar perfis' }}
+      </button>
+    </div>
+  </div>
+}

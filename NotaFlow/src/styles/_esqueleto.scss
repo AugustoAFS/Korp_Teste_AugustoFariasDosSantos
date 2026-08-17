@@ -1,0 +1,46 @@
+
+.esqueleto {
+  pointer-events: none;
+  user-select: none;
+  cursor: progress;
+
+  :is(span, b, strong, small, em, a, code, label, dt, dd) {
+    display: inline-block;
+    min-width: 6ch;
+    color: transparent !important;
+    background-image: linear-gradient(
+      90deg,
+      var(--surface-2) 25%,
+      var(--surface-3) 37%,
+      var(--surface-2) 63%
+    );
+    background-size: 400% 100%;
+    border-radius: var(--s-half);
+    animation: esqueleto-brilho 1.4s ease-in-out infinite;
+  }
+
+  :is(svg, img) { visibility: hidden; }
+
+  td:nth-child(2) :is(span, b) { min-width: 16ch; }
+  td:nth-child(3) :is(span, b) { min-width: 4ch; }
+
+  :is(button, .chip) {
+    color: transparent !important;
+    background: var(--surface-2) !important;
+    border-color: var(--d-edge) !important;
+    box-shadow: none !important;
+  }
+}
+
+@keyframes esqueleto-brilho {
+  from { background-position: 100% 50%; }
+  to   { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto :is(span, b, strong, small, em, a, code, label, dt, dd) {
+    animation: none;
+    background-image: none;
+    background-color: var(--surface-2);
+  }
+}

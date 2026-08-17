@@ -1,0 +1,6 @@
+<ng-content select="[icone]" />
+<h2>{{ titulo() }}</h2>
+<p>{{ explicacao() }}</p>
+@if (acao()) {
+  <button type="button" (click)="acionar.emit()">{{ acao() }}</button>
+}

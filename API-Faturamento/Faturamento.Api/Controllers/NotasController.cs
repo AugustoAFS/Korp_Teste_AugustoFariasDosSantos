@@ -87,7 +87,7 @@ public sealed class NotasController(
 
     [HttpDelete("{id:long}/itens/{itemId:long}")]
     [Authorize]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<InvoiceResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteInvoiceItem(long id, long itemId, CancellationToken ct)

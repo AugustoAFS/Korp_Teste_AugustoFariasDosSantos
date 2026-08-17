@@ -1,0 +1,85 @@
+<div class="casca" [class.recolhida]="recolhida()">
+  <header class="topo">
+    <button type="button" class="recolher" (click)="recolhida.update(v => !v)" aria-label="Alternar menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 12h18M3 6h18M3 18h18" />
+      </svg>
+    </button>
+
+    <a routerLink="/painel" class="marca">
+      <app-logo [tamanho]="24" />
+      <span>Emissor NF</span>
+    </a>
+
+    <button type="button" class="acao" (click)="alternarTema()" title="Alternar tema">
+      {{ escuro() ? 'Claro' : 'Escuro' }}
+    </button>
+
+    <button type="button" class="acao" (click)="reverTour()" title="Refazer tour">
+      Tour
+    </button>
+
+    <div class="usuario">
+      <span class="nome">{{ auth.user()?.name }}</span>
+      <span class="perfil">{{ auth.roles().join(' · ') }}</span>
+    </div>
+  </header>
+
+  <div class="corpo">
+    <aside class="lateral" aria-label="Menu principal">
+      <p class="grupo">Módulos</p>
+      @for (item of visiveis(); track item.rota) {
+        <a [id]="'nav-' + item.icone" [routerLink]="item.rota" routerLinkActive="ativo" class="item">
+          @switch (item.icone) {
+            @case ('painel') {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            }
+            @case ('caixa') {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            }
+            @case ('documento') {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            }
+            @case ('pessoa') {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            }
+          }
+          <span class="rot">{{ item.rotulo }}</span>
+        </a>
+      }
+
+      <div class="rodape">
+        <button type="button" class="item" (click)="sair()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="rot">Sair</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="conteudo">
+      <router-outlet />
+    </main>
+  </div>
+
+  <nav class="inferior" aria-label="Navegação móvel">
+    @for (item of visiveis(); track item.rota) {
+      <a [routerLink]="item.rota" routerLinkActive="ativo">
+        @switch (item.icone) {
+          @case ('painel') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          }
+          @case ('caixa') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+          }
+          @case ('documento') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          }
+          @case ('pessoa') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          }
+        }
+        <span>{{ item.curto }}</span>
+      </a>
+    }
+  </nav>
+</div>

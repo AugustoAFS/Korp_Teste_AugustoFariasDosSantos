@@ -1,0 +1,36 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--s-4) var(--s-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--d-radius);
+  margin-bottom: var(--s-3);
+}
+
+h2 {
+  margin: var(--s-1) 0 0;
+  font-family: var(--d-display);
+  font-size: var(--t-lg);
+}
+
+p {
+  margin: var(--s-half) 0 var(--s-2);
+  font-size: var(--t-sm);
+  color: var(--fg-muted);
+  max-width: 40ch;
+}
+
+button {
+  min-height: var(--s-6);
+  padding: 0 var(--s-2);
+  border: 1px solid var(--d-solid);
+  border-radius: var(--d-radius);
+  background: var(--d-solid);
+  color: #fff;
+  cursor: pointer;
+  font: 600 var(--t-sm)/1 var(--font-sans);
+}

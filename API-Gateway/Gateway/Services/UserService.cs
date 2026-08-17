@@ -22,6 +22,19 @@ public sealed class UserService(
 {
     private const string UniqueViolation = "23505";
 
+    public async Task<Result<PagedResult<UserResponse>>> GetUsers(UserFilterRequest filter, CancellationToken ct)
+    {
+        var (items, total) = await userRepository.GetPaged(filter, ct);
+
+        return new PagedResult<UserResponse>
+        {
+            Items = [.. items.Select(user => new UserResponse(user, user.Roles.Select(link => link.Role.Name)))],
+            Page = filter.Page,
+            Size = filter.Size,
+            Total = total
+        };
+    }
+
     public async Task<Result<UserResponse>> ById(long userId, CancellationToken ct)
     {
         if (!Own(userId) && !Administrator())

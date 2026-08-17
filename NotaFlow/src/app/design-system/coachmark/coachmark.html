@@ -1,0 +1,34 @@
+@if (tour.running() && tour.step(); as passo) {
+  <div class="veu" aria-hidden="true"></div>
+
+  <div
+    class="balao"
+    [class.ancorado]="posicao() !== null"
+    [style.top.px]="posicao()?.top"
+    [style.left.px]="posicao()?.left"
+    role="dialog"
+    aria-modal="false"
+    [attr.aria-label]="passo.title">
+    <p class="passo">Passo {{ tour.index() }} de {{ tour.total() }}</p>
+    <h2>{{ passo.title }}</h2>
+    <p class="texto">{{ passo.text }}</p>
+
+    <div class="acoes-tour">
+      <button type="button" class="primario" (click)="tour.next()">
+        {{ tour.last() ? 'Concluir' : 'Próximo' }}
+      </button>
+
+      @if (!tour.first()) {
+        <button type="button" class="secundario" (click)="tour.back()">Voltar</button>
+      }
+
+      <button type="button" class="pular" (click)="tour.skip()">Pular</button>
+
+      <span class="progresso" aria-hidden="true">
+        @for (ponto of [].constructor(tour.total()); track $index) {
+          <i [class.feito]="$index < tour.index()"></i>
+        }
+      </span>
+    </div>
+  </div>
+}
