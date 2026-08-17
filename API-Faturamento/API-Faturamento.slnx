@@ -4,4 +4,8 @@
   <Project Path="Faturamento.Domain/Faturamento.Domain.csproj" Id="6ede8c7a-7fa6-4a93-bdc0-ff5ddc9acde6" />
   <Project Path="Faturamento.EventListeners/Faturamento.EventListeners.csproj" Id="ed3ef9e1-07f5-4857-a934-149396da8e57" />
   <Project Path="Faturamento.InfraStructure/Faturamento.InfraStructure.csproj" Id="a4171e2e-1872-4980-8ab1-80c52dea2d25" />
+  <Folder Name="/Testes/">
+    <Project Path="Testes/TestesUnitarios/Faturamento.TestesUnitarios.csproj" />
+    <Project Path="Testes/TestesIntegracao/Faturamento.TestesIntegracao.csproj" />
+  </Folder>
 </Solution>

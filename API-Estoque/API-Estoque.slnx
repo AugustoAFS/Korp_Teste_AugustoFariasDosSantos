@@ -4,4 +4,8 @@
   <Project Path="Estoque.Domain/Estoque.Domain.csproj" />
   <Project Path="Estoque.EventListeners/Estoque.EventListeners.csproj" />
   <Project Path="Estoque.InfraStructure/Estoque.InfraStructure.csproj" />
+  <Folder Name="/Testes/">
+    <Project Path="Testes/TestesUnitarios/Estoque.TestesUnitarios.csproj" />
+    <Project Path="Testes/TestesIntegracao/Estoque.TestesIntegracao.csproj" />
+  </Folder>
 </Solution>
