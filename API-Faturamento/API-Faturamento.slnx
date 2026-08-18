@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="Faturamento.Api/Faturamento.Api.csproj" Id="3b4cbb73-43b9-449b-9aa9-3d04df7f651c" />
+  <Project DefaultStartup="true" Path="Faturamento.Api/Faturamento.Api.csproj" Id="3b4cbb73-43b9-449b-9aa9-3d04df7f651c" />
   <Project Path="Faturamento.Ai/Faturamento.Ai.csproj" />
   <Project Path="Faturamento.ApplicationService/Faturamento.ApplicationService.csproj" Id="9fcd154b-5295-4883-9401-557e15d348ca" />
   <Project Path="Faturamento.Domain/Faturamento.Domain.csproj" Id="6ede8c7a-7fa6-4a93-bdc0-ff5ddc9acde6" />

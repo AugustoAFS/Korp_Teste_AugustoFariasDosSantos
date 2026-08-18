@@ -179,22 +179,26 @@ docker compose up -d
 
 **Depois**, abra quatro terminais, um para cada parte — ou abra cada projeto na IDE e rode pelo F5 do Visual Studio, que também funciona:
 
-```bash
-cd API-Gateway     && dotnet run --project Gateway          # :5000
-cd API-Estoque     && dotnet run --project Estoque.Api      # :5247
-cd API-Faturamento && dotnet run --project Faturamento.Api  # :5108
-cd NotaFlow        && npm install && npm start              # :4200
+```text
+Primeiro cd API-Gateway     Segundo dotnet run --project Gateway          # :5000
+Primeiro cd API-Estoque     Segundo dotnet run --project Estoque.Api      # :5247
+Primeiro cd API-Faturamento Segundo dotnet run --project Faturamento.Api  # :5108
+Primeiro cd NotaFlow        Segundo npm install Terceiro npm start              # :4200
 ```
+
+Neste modo o endereço é **http://localhost:4200**, e não o :5000. O front chama `/api/v1` relativo e o `proxy.conf.json` encaminha `/api` para o gateway — é isso que mantém uma origem só, exigência do cookie de sessão `SameSite=Strict`.
+
+Se o `--profile app` ainda estiver no ar, derrube antes com `docker compose --profile app down`: os contêineres publicam as mesmas portas 5000, 5247 e 5108 que o modo local usa.
 
 ---
 
 ## 3 · Testes
 
-```bash
-cd API-Estoque     && dotnet test
-cd API-Faturamento && dotnet test
-cd API-Gateway     && dotnet test
-cd NotaFlow        && npx ng test --watch=false
+```text
+Primeiro cd API-Estoque     Segundo dotnet test
+Primeiro cd API-Faturamento Segundo dotnet test
+Primeiro cd API-Gateway     Segundo dotnet test
+Primeiro cd NotaFlow        Segundo npx ng test --watch=false
 ```
 
 Só os unitários, sem Docker:

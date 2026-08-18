@@ -1,5 +1,5 @@
 ﻿<Solution>
-  <Project Path="Gateway/Gateway.csproj" Id="46ea66fd-3c57-4ac3-b60a-aa0360732f50" />
+  <Project DefaultStartup="true" Path="Gateway/Gateway.csproj" Id="46ea66fd-3c57-4ac3-b60a-aa0360732f50" />
   <Folder Name="/Testes/">
     <Project Path="Testes/TestesUnitarios/Gateway.TestesUnitarios.csproj" />
     <Project Path="Testes/TestesIntegracao/Gateway.TestesIntegracao.csproj" />
