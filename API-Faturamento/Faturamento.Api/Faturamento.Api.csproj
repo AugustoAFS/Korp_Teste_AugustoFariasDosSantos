@@ -26,6 +26,7 @@
     <ProjectReference Include="..\Faturamento.ApplicationService\Faturamento.ApplicationService.csproj" />
     <ProjectReference Include="..\Faturamento.InfraStructure\Faturamento.InfraStructure.csproj" />
     <ProjectReference Include="..\Faturamento.EventListeners\Faturamento.EventListeners.csproj" />
+    <ProjectReference Include="..\Faturamento.Ai\Faturamento.Ai.csproj" />
   </ItemGroup>
 
 </Project>

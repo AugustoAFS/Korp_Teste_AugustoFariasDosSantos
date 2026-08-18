@@ -13,6 +13,7 @@ public sealed class InvoicePrintServiceTests
 {
     private readonly IInvoiceRepository _notas = Substitute.For<IInvoiceRepository>();
     private readonly IProcessedMessageRepository _mensagens = Substitute.For<IProcessedMessageRepository>();
+    private readonly IRejectionExplainer _explicador = Substitute.For<IRejectionExplainer>();
     private readonly IFaturamentoEventPublisher _publisher = Substitute.For<IFaturamentoEventPublisher>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ICurrentUser _usuario = Substitute.For<ICurrentUser>();
@@ -29,7 +30,8 @@ public sealed class InvoicePrintServiceTests
         _notas.RestartPrinting(Arg.Any<long>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _service = new InvoicePrintService(
-            _notas, _mensagens, _publisher, _unitOfWork, _usuario, NullLogger<InvoicePrintService>.Instance);
+            _notas, _mensagens, _explicador, _publisher, _unitOfWork, _usuario,
+            NullLogger<InvoicePrintService>.Instance);
     }
 
     private static Invoice NotaComItem(long emitidaPor = 7)
@@ -254,6 +256,80 @@ public sealed class InvoicePrintServiceTests
         await _service.CloseInvoice(Guid.CreateVersion7(), 1, Guid.CreateVersion7(), default);
 
         await _unitOfWork.Received(1).Commit(Arg.Any<CancellationToken>());
+    }
+
+    #endregion
+
+    #region Explicação da rejeição pela IA
+
+    [Fact]
+    public async Task Rejeicao_com_assistente_desligado_grava_apenas_o_motivo_tecnico()
+    {
+        var nota = NotaComItem();
+        var processamento = Guid.CreateVersion7();
+        nota.StartPrinting(processamento);
+        EmProcessamento(nota, processamento);
+        _explicador.Enabled.Returns(false);
+
+        await _service.RejectInvoice(Guid.CreateVersion7(), 1, processamento, "Saldo insuficiente.", default);
+
+        nota.LastError.ShouldBe("Saldo insuficiente.");
+        nota.RejectionExplanation.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Rejeicao_com_assistente_ligado_guarda_a_explicacao_ao_lado_do_motivo()
+    {
+        var nota = NotaComItem();
+        var processamento = Guid.CreateVersion7();
+        nota.StartPrinting(processamento);
+        Existe(nota);
+        EmProcessamento(nota, processamento);
+        _explicador.Enabled.Returns(true);
+        _explicador.Explain(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns("Faltaram 2 unidades de Parafuso sextavado M8.");
+
+        await _service.RejectInvoice(Guid.CreateVersion7(), 1, processamento, "Saldo insuficiente.", default);
+
+        nota.LastError.ShouldBe("Saldo insuficiente.");
+        nota.RejectionExplanation.ShouldBe("Faltaram 2 unidades de Parafuso sextavado M8.");
+    }
+
+    [Fact]
+    public async Task Assistente_fora_do_ar_nao_impede_a_rejeicao_de_ser_aplicada()
+    {
+        var nota = NotaComItem();
+        var processamento = Guid.CreateVersion7();
+        nota.StartPrinting(processamento);
+        Existe(nota);
+        EmProcessamento(nota, processamento);
+        _explicador.Enabled.Returns(true);
+        _explicador.Explain(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+
+        await _service.RejectInvoice(Guid.CreateVersion7(), 1, processamento, "Saldo insuficiente.", default);
+
+        nota.LastError.ShouldBe("Saldo insuficiente.");
+        nota.RejectionExplanation.ShouldBeNull();
+        await _unitOfWork.Received(1).Commit(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Explicacao_recebe_os_itens_da_nota_em_linguagem_de_usuario()
+    {
+        var nota = NotaComItem();
+        var processamento = Guid.CreateVersion7();
+        nota.StartPrinting(processamento);
+        Existe(nota);
+        EmProcessamento(nota, processamento);
+        _explicador.Enabled.Returns(true);
+
+        await _service.RejectInvoice(Guid.CreateVersion7(), 1, processamento, "Saldo insuficiente.", default);
+
+        await _explicador.Received(1).Explain(
+            "Saldo insuficiente.",
+            Arg.Is<IReadOnlyList<string>>(itens => itens.Single() == "2x Parafuso sextavado M8"),
+            Arg.Any<CancellationToken>());
     }
 
     #endregion

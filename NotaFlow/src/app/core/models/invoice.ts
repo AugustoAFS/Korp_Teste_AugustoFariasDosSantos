@@ -23,6 +23,7 @@ export interface Invoice {
   readonly editable: boolean;
 
   readonly lastError: string | null;
+  readonly rejectionExplanation: string | null;
   readonly items: readonly InvoiceItem[];
 }
 
@@ -33,4 +34,17 @@ export interface AddInvoiceItemRequest {
 
 export interface UpdateInvoiceItemRequest {
   readonly quantity: number;
+}
+
+export interface InterpretedItem {
+  readonly productId: string;
+  readonly productCode: string;
+  readonly productDescription: string;
+  readonly quantity: number;
+  readonly alreadyInInvoice: boolean;
+}
+
+export interface InterpretationResult {
+  readonly items: readonly InterpretedItem[];
+  readonly unresolved: readonly string[];
 }

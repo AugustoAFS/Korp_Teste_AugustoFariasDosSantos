@@ -4,6 +4,7 @@ using Faturamento.Api.Middlewares;
 using Faturamento.ApplicationService.DependencyInjection;
 using Faturamento.EventListeners;
 using Faturamento.InfraStructure.Data;
+using Faturamento.Ai;
 using Faturamento.InfraStructure.DependencyInjection;
 using Microsoft.AspNetCore.HttpOverrides;
 
@@ -23,6 +24,7 @@ public class Program
 
         builder.Services
             .AddInfraStructure(builder.Configuration)
+            .AddAi(builder.Configuration)
             .AddApplicationService()
             .AddEventListeners(builder.Configuration)
             .AddJwtAuthentication(builder.Configuration)
@@ -40,9 +42,13 @@ public class Program
 
         builder.Services.AddProblemDetails();
 
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
         var app = builder.Build();
 
         await app.Services.PrepareDatabase();
+
+        app.Services.WarnWhenAiDisabled();
 
         app.UseForwardedHeaders(new ForwardedHeadersOptions
         {

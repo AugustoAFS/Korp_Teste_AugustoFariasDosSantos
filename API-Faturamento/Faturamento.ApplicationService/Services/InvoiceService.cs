@@ -13,6 +13,7 @@ namespace Faturamento.ApplicationService.Services;
 public sealed class InvoiceService(
     IInvoiceRepository invoices,
     IReplicatedProductRepository products,
+    IInvoicePdfWriter pdf,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     ILogger<InvoiceService> logger) : IInvoiceService
@@ -46,6 +47,31 @@ public sealed class InvoiceService(
         }
 
         return new InvoiceResponse(invoice);
+    }
+
+    public async Task<Result<InvoicePdf>> GetInvoicePdf(long id, CancellationToken ct)
+    {
+        var invoice = await Visible(id, ct);
+
+        if (invoice is null)
+        {
+            logger.LogWarning("PDF recusado: nota {Nota} inexistente ou fora do escopo do usuário", id);
+            return Errors.InvoiceNotFound;
+        }
+
+        if (invoice.Status != InvoiceStatus.Closed)
+        {
+            logger.LogWarning("PDF recusado: nota {Nota} ainda não foi fechada", id);
+            return Errors.InvoiceNotClosed;
+        }
+
+        logger.LogInformation("PDF da nota {Nota} gerado", id);
+
+        return new InvoicePdf
+        {
+            Content = pdf.Write(invoice),
+            FileName = $"nota-fiscal-{invoice.Number:0000000}.pdf"
+        };
     }
 
     public async Task<Result<InvoiceResponse>> CreateInvoice(CancellationToken ct)

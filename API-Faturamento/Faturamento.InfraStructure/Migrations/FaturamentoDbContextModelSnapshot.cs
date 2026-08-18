@@ -71,6 +71,11 @@ namespace Faturamento.InfraStructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("processing_started_at");
 
+                    b.Property<string>("RejectionExplanation")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("rejection_explanation");
+
                     b.Property<short>("Status")
                         .HasColumnType("smallint")
                         .HasColumnName("status");

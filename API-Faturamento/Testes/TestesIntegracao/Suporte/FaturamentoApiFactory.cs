@@ -24,6 +24,8 @@ public sealed class FaturamentoApiFactory(PostgresFixture banco, RabbitMqFixture
         builder.UseSetting("ConnectionStrings:RabbitMq", broker.ConnectionString);
         builder.UseSetting("Security:JwtKey", Chave);
         builder.UseSetting("Cors:Origins:0", "http://localhost:4200");
+
+        builder.UseSetting("Ai:ApiKey", string.Empty);
     }
 
     public HttpClient ClienteComPerfil(long usuarioId, string nome, params string[] perfis)

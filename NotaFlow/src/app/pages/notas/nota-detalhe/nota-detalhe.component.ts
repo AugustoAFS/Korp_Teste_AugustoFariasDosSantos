@@ -5,7 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { API } from '../../../core/api.const';
-import { Invoice } from '../../../core/models/invoice';
+import { InterpretedItem, Invoice } from '../../../core/models/invoice';
 import { PagedResult } from '../../../core/models/paged-result';
 import { Product } from '../../../core/models/product';
 import { ConfirmService } from '../../../core/services/confirm.service';
@@ -38,6 +38,13 @@ export class NotaDetalheComponent {
   protected readonly escolhido = signal<Product | null>(null);
 
   protected readonly listaAberta = signal(false);
+
+  protected readonly pedidoIa = signal('');
+  protected readonly interpretando = signal(false);
+  protected readonly sugestoes = signal<readonly InterpretedItem[]>([]);
+  protected readonly naoReconhecidos = signal<readonly string[]>([]);
+  protected readonly iaIndisponivel = signal(false);
+  protected readonly baixando = signal(false);
 
   protected readonly catalogo = httpResource<PagedResult<Product>>(() => ({
     url: `${API}/produtos`,
@@ -77,6 +84,71 @@ export class NotaDetalheComponent {
     this.escolhido.set(p);
     this.termo.set('');
     this.listaAberta.set(false);
+  };
+
+  protected baixarPdf = async () => {
+    if (this.baixando()) return;
+
+    this.baixando.set(true);
+
+    try {
+      const arquivo = await this.service.pdf(this.id());
+      const url = URL.createObjectURL(arquivo);
+      const link = document.createElement('a');
+
+      link.href = url;
+      link.download = `nota-fiscal-${String(this.atual()?.number ?? this.id()).padStart(7, '0')}.pdf`;
+      link.click();
+
+      URL.revokeObjectURL(url);
+    } finally {
+      this.baixando.set(false);
+    }
+  };
+
+  protected interpretar = async () => {
+    const frase = this.pedidoIa().trim();
+    if (frase.length < 3 || this.interpretando()) return;
+
+    this.interpretando.set(true);
+    this.sugestoes.set([]);
+    this.naoReconhecidos.set([]);
+
+    try {
+      const resultado = await this.service.interpret(this.id(), frase);
+
+      this.sugestoes.set(resultado.items);
+      this.naoReconhecidos.set(resultado.unresolved);
+
+      if (resultado.items.length === 0 && resultado.unresolved.length === 0)
+        this.toast.warn('Não identifiquei nenhum produto do catálogo nesse pedido.');
+    } catch {
+      this.iaIndisponivel.set(true);
+    } finally {
+      this.interpretando.set(false);
+    }
+  };
+
+  protected descartarSugestoes = () => {
+    this.sugestoes.set([]);
+    this.naoReconhecidos.set([]);
+    this.pedidoIa.set('');
+  };
+
+  protected aceitarSugestao = async (sugestao: InterpretedItem) => {
+    if (this.ocupado()) return;
+
+    this.ocupado.set(true);
+
+    try {
+      this.nota.set(await this.service.addItem(
+        this.id(), { productId: sugestao.productId, quantity: sugestao.quantity }));
+
+      this.sugestoes.update(lista => lista.filter(item => item.productId !== sugestao.productId));
+      this.toast.ok(`${sugestao.productCode} adicionado.`);
+    } finally {
+      this.ocupado.set(false);
+    }
   };
 
   protected adicionar = async () => {
@@ -122,7 +194,7 @@ export class NotaDetalheComponent {
     }
   };
 
-  protected imprimir = async () => {
+  protected fechar = async () => {
     if (this.ocupado()) return;
     this.ocupado.set(true);
 
@@ -144,7 +216,7 @@ export class NotaDetalheComponent {
 
         nota.status === 'Closed'
           ? this.toast.ok(`Nota ${nota.number} fechada. O estoque foi baixado.`)
-          : this.toast.bad(nota.lastError ?? 'A impressão não foi concluída.');
+          : this.toast.bad(nota.lastError ?? 'O fechamento não foi concluído.');
       });
 
   protected excluirNota = async () => {
@@ -153,7 +225,7 @@ export class NotaDetalheComponent {
 
     const ok = await this.confirm.ask({
       title: `Excluir a nota ${n.number}?`,
-      text: 'A nota e seus itens saem da listagem. Nota já impressa não pode ser excluída.',
+      text: 'A nota e seus itens saem da listagem. Nota já fechada não pode ser excluída.',
       action: 'Excluir nota',
       destructive: true
     });

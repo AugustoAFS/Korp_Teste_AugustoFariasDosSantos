@@ -17,6 +17,7 @@ public sealed record InvoiceResponse
         Printing = invoice.Printing;
         Editable = invoice.Editable;
         LastError = invoice.LastError;
+        RejectionExplanation = invoice.RejectionExplanation;
         Items = [.. invoice.Items.Select(item => new InvoiceItemResponse(item))];
     }
 
@@ -30,5 +31,6 @@ public sealed record InvoiceResponse
     public bool Printing { get; init; }
     public bool Editable { get; init; }
     public string? LastError { get; init; }
+    public string? RejectionExplanation { get; init; }
     public IReadOnlyList<InvoiceItemResponse> Items { get; init; } = [];
 }

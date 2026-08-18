@@ -10,6 +10,14 @@ public sealed class ReplicatedProductRepository(FaturamentoDbContext context) : 
     public Task<ReplicatedProduct?> GetById(Guid productId, CancellationToken ct)
         => context.ReplicatedProducts.AsNoTracking().FirstOrDefaultAsync(p => p.ProductId == productId, ct);
 
+    public async Task<IReadOnlyList<ReplicatedProduct>> ActiveCatalog(int limit, CancellationToken ct)
+        => await context.ReplicatedProducts
+            .AsNoTracking()
+            .Where(produto => produto.Active)
+            .OrderBy(produto => produto.Code)
+            .Take(limit)
+            .ToListAsync(ct);
+
     public async Task Upsert(
         Guid productId, string code, string description, bool active, DateTimeOffset updatedAt, CancellationToken ct)
     {

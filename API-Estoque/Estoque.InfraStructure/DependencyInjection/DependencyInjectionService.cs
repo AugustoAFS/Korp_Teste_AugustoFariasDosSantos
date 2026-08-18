@@ -1,5 +1,7 @@
-using System.Reflection;
+using Estoque.Domain.Interfaces;
 using Estoque.InfraStructure.Data;
+using Estoque.InfraStructure.Repositories;
+using Estoque.InfraStructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,12 +10,6 @@ namespace Estoque.InfraStructure.DependencyInjection;
 
 public static class DependencyInjectionService
 {
-    private static readonly string[] Namespaces =
-    [
-        "Estoque.InfraStructure.Repositories",
-        "Estoque.InfraStructure.Security"
-    ];
-
     public static IServiceCollection AddInfraStructure(this IServiceCollection services, IConfiguration configuration)
     {
         var conexao = configuration.GetConnectionString("EstoqueDb");
@@ -27,19 +23,21 @@ public static class DependencyInjectionService
 
         services.AddHttpContextAccessor();
 
-        var implementacoes = Assembly.GetExecutingAssembly()
-            .GetTypes()
-            .Where(tipo => tipo is { IsClass: true, IsAbstract: false, IsPublic: true })
-            .Where(tipo => Namespaces.Any(nome => tipo.Namespace?.StartsWith(nome, StringComparison.Ordinal) == true));
+        #region [ Repositories ]
 
-        foreach (var implementacao in implementacoes)
-        {
-            var contrato = Array.Find(implementacao.GetInterfaces(), tipo => tipo.Name == $"I{implementacao.Name}")
-                ?? throw new InvalidOperationException(
-                    $"{implementacao.Name} não expõe a interface I{implementacao.Name}.");
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IStockMovementRepository, StockMovementRepository>();
+        services.AddScoped<IProcessedMessageRepository, ProcessedMessageRepository>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-            services.AddScoped(contrato, implementacao);
-        }
+        #endregion [ Repositories ]
+
+        #region [ Security ]
+
+        services.AddScoped<ICurrentUser, CurrentUser>();
+
+        #endregion [ Security ]
 
         return services;
     }

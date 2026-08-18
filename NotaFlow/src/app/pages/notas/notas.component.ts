@@ -65,7 +65,7 @@ export class NotasComponent {
   protected excluir = async (n: Invoice) => {
     const ok = await this.confirm.ask({
       title: `Excluir a nota ${n.number}?`,
-      text: 'A nota sai da listagem. Só é possível excluir nota que ainda não foi impressa.',
+      text: 'A nota sai da listagem. Só é possível excluir nota que ainda não foi fechada.',
       action: 'Excluir nota',
       destructive: true
     });

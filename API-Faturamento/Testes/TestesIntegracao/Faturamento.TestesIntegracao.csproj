@@ -17,6 +17,7 @@
     <PackageReference Include="Testcontainers.RabbitMq" Version="4.14.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.61" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +30,7 @@
     <ProjectReference Include="..\..\Faturamento.InfraStructure\Faturamento.InfraStructure.csproj" />
     <ProjectReference Include="..\..\Faturamento.Api\Faturamento.Api.csproj" />
     <ProjectReference Include="..\..\Faturamento.EventListeners\Faturamento.EventListeners.csproj" />
+    <ProjectReference Include="..\..\Faturamento.Ai\Faturamento.Ai.csproj" />
   </ItemGroup>
 
 </Project>

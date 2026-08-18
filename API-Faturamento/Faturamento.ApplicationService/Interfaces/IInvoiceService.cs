@@ -10,6 +10,8 @@ public interface IInvoiceService
 
     Task<Result<InvoiceResponse>> GetInvoiceById(long id, CancellationToken ct);
 
+    Task<Result<InvoicePdf>> GetInvoicePdf(long id, CancellationToken ct);
+
     Task<Result<InvoiceResponse>> CreateInvoice(CancellationToken ct);
 
     Task<Result> DeleteInvoice(long id, CancellationToken ct);

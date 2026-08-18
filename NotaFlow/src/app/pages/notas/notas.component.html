@@ -23,7 +23,7 @@
   </div>
 } @else if (!dados.isLoading() && dados.value()?.items?.length === 0) {
   <app-empty-state titulo="Nenhuma nota ainda"
-                   explicacao="Abra uma nota, adicione produtos e mande imprimir para dar baixa no estoque."
+                   explicacao="Abra uma nota, adicione produtos e feche para dar baixa no estoque."
                    acao="Abrir a primeira nota"
                    (acionar)="nova()">
     <svg icone width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--fg-subtle)" stroke-width="1.5" aria-hidden="true">

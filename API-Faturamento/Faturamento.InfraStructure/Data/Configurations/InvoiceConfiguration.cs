@@ -25,6 +25,7 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.ProcessingId);
         builder.Property(i => i.ProcessingStartedAt);
         builder.Property(i => i.LastError);
+        builder.Property(i => i.RejectionExplanation).HasMaxLength(500);
 
         builder.HasMany(i => i.Items)
             .WithOne()

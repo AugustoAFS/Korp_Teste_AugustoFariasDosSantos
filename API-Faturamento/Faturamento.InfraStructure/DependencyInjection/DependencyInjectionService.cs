@@ -1,5 +1,8 @@
-using System.Reflection;
+using Faturamento.Domain.Interfaces;
 using Faturamento.InfraStructure.Data;
+using Faturamento.InfraStructure.Documents;
+using Faturamento.InfraStructure.Repositories;
+using Faturamento.InfraStructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,12 +11,6 @@ namespace Faturamento.InfraStructure.DependencyInjection;
 
 public static class DependencyInjectionService
 {
-    private static readonly string[] Namespaces =
-    [
-        "Faturamento.InfraStructure.Repositories",
-        "Faturamento.InfraStructure.Security"
-    ];
-
     public static IServiceCollection AddInfraStructure(this IServiceCollection services, IConfiguration configuration)
     {
         var conexao = configuration.GetConnectionString("FaturamentoDb");
@@ -27,19 +24,27 @@ public static class DependencyInjectionService
 
         services.AddHttpContextAccessor();
 
-        var implementacoes = Assembly.GetExecutingAssembly()
-            .GetTypes()
-            .Where(tipo => tipo is { IsClass: true, IsAbstract: false, IsPublic: true })
-            .Where(tipo => Namespaces.Any(nome => tipo.Namespace?.StartsWith(nome, StringComparison.Ordinal) == true));
+        #region [ Repositories ]
 
-        foreach (var implementacao in implementacoes)
-        {
-            var contrato = Array.Find(implementacao.GetInterfaces(), tipo => tipo.Name == $"I{implementacao.Name}")
-                ?? throw new InvalidOperationException(
-                    $"{implementacao.Name} não expõe a interface I{implementacao.Name}.");
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IReplicatedProductRepository, ReplicatedProductRepository>();
+        services.AddScoped<IProcessedMessageRepository, ProcessedMessageRepository>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-            services.AddScoped(contrato, implementacao);
-        }
+        #endregion [ Repositories ]
+
+        #region [ Documents ]
+
+        services.AddScoped<IInvoicePdfWriter, InvoicePdfWriter>();
+
+        #endregion [ Documents ]
+
+        #region [ Security ]
+
+        services.AddScoped<ICurrentUser, CurrentUser>();
+
+        #endregion [ Security ]
 
         return services;
     }

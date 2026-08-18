@@ -100,3 +100,32 @@
   font-size: var(--t-sm);
   color: var(--fg-subtle);
 }
+
+.ia-acoes {
+  display: flex;
+  gap: var(--s-2);
+  align-items: center;
+}
+
+.ia-descartar,
+.ia-aceitar {
+  min-height: var(--s-6);
+  padding: 0 var(--s-2);
+  border: 1px solid var(--ia-line);
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--ia);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ia-aceitar:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.motivo-tecnico {
+  font-size: var(--t-xs);
+  color: var(--fg-subtle);
+}

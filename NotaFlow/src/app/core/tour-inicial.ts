@@ -33,8 +33,14 @@ export const TOUR_INICIAL: readonly TourStep[] = [
     id: 'nova-nota',
     route: '/notas',
     anchor: '#btn-nova-nota',
-    title: 'Abra, inclua, imprima',
-    text: 'A nota nasce vazia e com número sequencial. Dentro dela você busca produtos, define quantidade e manda imprimir — é a impressão que dá baixa no estoque.'
+    title: 'Abra, inclua, feche',
+    text: 'A nota nasce vazia e com número sequencial. Dentro dela você busca produtos, define quantidade e fecha a nota — é o fechamento que dá baixa no estoque. Depois de fechada, dá para imprimir o PDF.'
+  },
+  {
+    id: 'assistente',
+    route: '/notas',
+    title: 'O assistente de IA ✨',
+    text: 'Dentro de uma nota aberta há um campo roxo com estrela. Escreva "3 parafusos sextavados e dois martelos" e a IA resolve os itens contra o catálogo. Tudo que vem de IA é roxo e marcado — ela propõe, você confirma. Ela nunca grava sozinha, e nunca inventa produto que não exista.'
   },
   {
     id: 'situacao',
@@ -53,6 +59,6 @@ export const TOUR_INICIAL: readonly TourStep[] = [
   {
     id: 'falha',
     title: 'Por último, quebre de propósito',
-    text: 'Rode "docker compose --profile app stop estoque", mande imprimir uma nota e suba o serviço de volta. A nota se resolve sozinha na tela, sem você tocar em nada. É o que este sistema tem de mais interessante.'
+    text: 'Rode "docker compose --profile app stop estoque", feche uma nota e suba o serviço de volta. A nota se resolve sozinha na tela, sem você tocar em nada. É o que este sistema tem de mais interessante.'
   }
 ];

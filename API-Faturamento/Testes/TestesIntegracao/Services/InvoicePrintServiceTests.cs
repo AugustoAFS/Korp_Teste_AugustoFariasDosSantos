@@ -17,6 +17,7 @@ namespace Faturamento.TestesIntegracao.Services;
 public sealed class InvoicePrintServiceTests(PostgresFixture banco) : IAsyncLifetime
 {
     private readonly ICurrentUser _usuario = Substitute.For<ICurrentUser>();
+    private readonly IRejectionExplainer _explicador = Substitute.For<IRejectionExplainer>();
 
     public async Task InitializeAsync()
     {
@@ -32,6 +33,7 @@ public sealed class InvoicePrintServiceTests(PostgresFixture banco) : IAsyncLife
         => new(
             new InvoiceRepository(contexto),
             new ProcessedMessageRepository(contexto),
+            _explicador,
             new FaturamentoEventPublisher(new OutboxRepository(contexto)),
             new UnitOfWork(contexto),
             _usuario,

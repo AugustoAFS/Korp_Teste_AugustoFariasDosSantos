@@ -1,201 +1,249 @@
 # Emissor NF
 
-Emissor de nota fiscal em microsserviços. Você cadastra um produto, abre uma nota, adiciona itens e manda imprimir — a impressão dá baixa no estoque. **Se faltar saldo em qualquer item, a nota inteira é recusada**: não existe baixa pela metade.
+Sistema para emitir notas fiscais. Você cadastra produtos, abre uma nota, escolhe os itens e fecha — e ao fechar, o sistema desconta a quantidade do estoque. Se faltar saldo de qualquer item, a nota inteira é recusada e **nada** é descontado.
 
-Teste técnico · Augusto Farias dos Santos
+Ele é dividido em partes independentes, que conversam entre si por uma fila de mensagens.
+
+Desafio técnico Korp · **Augusto Farias dos Santos**
+
+![Arquitetura do sistema](Documentacao/Assets/System-Design.jpg)
+
+A tela nunca fala direto com os serviços: tudo passa pelo **gateway**, que confere quem você é e encaminha. E os dois serviços não se chamam entre si — deixam recados numa fila.
 
 ---
 
-## Subir tudo
+## 1 · Subir
 
-Um comando. Sobe os três serviços, os três bancos, a fila de mensagens e a interface.
+**Você só precisa ter o Docker instalado.** Não é preciso instalar .NET, Node nem banco de dados: o Docker monta tudo sozinho.
+
+> **Vai querer testar a parte de IA?** Configure ela **antes** de rodar o comando abaixo — é rápido e está na [seção 4](#4--habilitar-a-ia-opcional). Se deixar para depois, vai precisar montar tudo de novo.
+>
+> Sem isso, o sistema funciona normal — só o assistente fica desligado.
 
 ```bash
 docker compose --profile app up -d --build
 ```
 
-Depois abra **http://localhost:5000**.
+Abra **http://localhost:5000** · `admin@admin.com` / `Admin123!`
 
-| | |
-|---|---|
-| **Usuário** | `admin@admin.com` |
-| **Senha** | `Admin123!` |
+> **Da primeira vez demora cerca de 1 minuto**, porque um dos bancos de dados é lento para iniciar. Se alguma tela disser *"não foi possível carregar"*, espere um pouco e clique em **Tentar novamente**.
 
-As credenciais também aparecem na tela de login, com um botão que preenche o formulário e entra. Os bancos são criados e migrados sozinhos no primeiro boot — não há script para rodar à mão, e **nenhum dado de exemplo é inserido**: o sistema sobe vazio, com apenas a conta de administrador.
-
-> A primeira subida leva alguns minutos porque o SQL Server demora a ficar pronto. O gateway espera por ele antes de aceitar requisição.
-
-Para olhar por dentro:
-
-| Endereço | O que é |
-|---|---|
-| `localhost:15672` | Painel do RabbitMQ (`Admin` / `Admin`) — dá para ver as mensagens passando |
-| `localhost:5000/scalar/v1` | Documentação viva da API |
+Os bancos de dados são criados sozinhos. O sistema começa **vazio**: fora a conta de administrador acima, tudo que você vir na tela foi você que cadastrou.
 
 ---
 
-## O roteiro — 5 passos
+## 2 · Os quatro projetos
 
-Cada passo diz onde clicar e o que deve acontecer.
+| Projeto | Endereço | Banco de dados | O que faz |
+|---|---|---|---|
+| `API-Gateway/` | :5000 | PostgreSQL | Porta de entrada |
+| `API-Estoque/` | :5247 | SQL Server | Cuida do estoque |
+| `API-Faturamento/` | :5108 | PostgreSQL | Cuida das notas |
+| `NotaFlow/` | :4200 | — | As telas |
 
-### 1 · Cadastre um produto · *Produtos*
+**Gateway** é a portaria: faz o login, lembra que você está conectado e encaminha cada pedido para o serviço certo.
 
-Clique em **Novo produto**. Preencha código, descrição e saldo inicial **10**.
+**Estoque** é o único que mexe no saldo dos produtos. Ninguém mais desconta estoque.
 
-> **Deve acontecer:** o produto aparece na lista com saldo 10. Em segundo plano ele é replicado para o serviço de faturamento — por isso fica disponível na nota alguns instantes depois.
+**Faturamento** cuida da nota: numeração, itens, fechamento e o PDF.
 
-### 2 · Abra uma nota · *Notas fiscais*
+**NotaFlow** são as telas que você usa.
 
-Clique em **Nova nota**. Ela nasce com número sequencial e situação **Aberta**.
-
-> **Deve acontecer:** a tela de detalhe abre direto, vazia, com a busca de produto pronta.
-
-### 3 · Adicione um item · *Notas fiscais*
-
-Digite duas letras do código, escolha o produto, quantidade **3**, confirme.
-
-> **Deve acontecer:** o item entra com código e descrição copiados do catálogo. Tente adicionar o mesmo produto de novo — o sistema recusa e manda editar a quantidade do item existente.
-
-### 4 · Imprima · *Notas fiscais*
-
-Clique em **Imprimir**. A tela entra em **Processando** e acompanha sozinha.
-
-> **Deve acontecer:** em 1 a 3 segundos a nota vira **Fechada**, sem recarregar a página. O botão de imprimir desabilita — nota fechada não reimprime.
-
-### 5 · Confira a baixa · *Produtos*
-
-> **Deve acontecer:** o saldo caiu de **10 para 7**. Os dois serviços têm bancos separados; o saldo mudou porque a impressão publicou uma mensagem que o estoque consumiu.
+Estoque e Faturamento **não conversam direto**. Quando uma nota é fechada, o Faturamento deixa um recado numa fila e o Estoque pega esse recado quando puder. É isso que faz o sistema continuar funcionando mesmo se um deles cair.
 
 ---
 
-## Agora quebre de propósito
+## 3 · Usar
 
-O caminho feliz é o fácil. Estes três cenários são o que o sistema tem de diferente.
+**1. Produtos → Novo produto.** Cadastre dois:
 
-### Tudo ou nada · 2 min
-
-Crie um segundo produto com saldo **1**. Abra uma nota nova com **dois itens**: o primeiro produto com quantidade 2 (tem saldo) e o segundo com quantidade 99 (não tem). Mande imprimir.
-
-A nota é **recusada inteira** e mostra o motivo. Volte em Produtos: **nenhum dos dois saldos mudou** — nem o que tinha saldo suficiente.
-
-Corrija o segundo item para quantidade 1 e imprima de novo. Agora fecha, e os dois saldos caem juntos.
-
-### Derrube o estoque no meio da impressão · 3 min
-
-Este é o cenário que mostra por que existem microsserviços aqui.
-
-```bash
-docker compose --profile app stop estoque
+```
+PAR-M8    Parafuso sextavado M8    saldo 10
+MAR-BOR   Martelo de borracha      saldo 5
 ```
 
-Com o serviço fora, abra uma nota, adicione um item e mande imprimir. A nota entra em **Processando** e fica. Em cerca de um minuto avisa que o estoque não respondeu — mas **continua aberta e editável**, nada foi perdido.
+**2. Notas fiscais → Nova nota.** Nasce com número sequencial e status **Aberta**.
 
-```bash
-docker compose --profile app start estoque
+**3. Adicione itens** pelo campo de busca. Com a IA habilitada *(seção 4)*, use o campo roxo ✨: escreva `3 parafusos sextavados e dois martelos` e clique em **Interpretar** — ela propõe, você confirma.
+
+**4. Fechar nota.** O botão mostra *Processando*: a API respondeu na hora e a baixa corre em segundo plano. Em segundos vira **Fechada**.
+
+**5. Volte em Produtos.** O saldo caiu pela quantidade usada: `10 → 7`.
+
+**6. Imprimir PDF** na nota fechada. Gerado no servidor, com a identidade do sistema.
+
+---
+
+## 4 · Habilitar a IA *(opcional)*
+
+O sistema tem um assistente que monta os itens da nota a partir de uma frase em português. Ele é **opcional**: sem chave, todo o resto funciona e apenas esse recurso fica desligado.
+
+### Passo 1 · Consiga uma chave
+
+A mais simples é a do **Google Gemini**, gratuita: acesse [aistudio.google.com/apikey](https://aistudio.google.com/apikey), entre com uma conta Google e clique em *Create API key*. Leva um minuto e não pede cartão.
+
+### Passo 2 · Abra o arquivo e cole a chave
+
+```
+API-Faturamento/Faturamento.Api/appsettings.json
 ```
 
-**Não toque em nada.** Quando o serviço volta, consome o comando que estava esperando na fila e a nota **fecha sozinha** na sua tela.
+> É o `appsettings.json` do **Faturamento**, não o do Gateway nem o do Estoque. A IA vive só nesse serviço.
 
-### Duas pessoas, dois escopos · 2 min
+Role até o fim. A seção `Ai` já está lá, **pronta para o Gemini** — só o campo `ApiKey` vem vazio.
 
-Em **Usuários**, crie uma conta nova com perfil Funcionário. Abra uma janela anônima e entre com ela.
+*(Prefere OpenAI, Anthropic ou um modelo local? Dá para trocar — veja [logo abaixo](#-prefere-outra-ia-funciona-com-qualquer-uma).)*
 
-A lista de notas vem **vazia** — ela não enxerga as notas do admin. Se tentar abrir pelo endereço direto, recebe "não encontrada". O admin, ao contrário, vê as notas de todo mundo. Ela também não consegue cadastrar produto: isso exige perfil Administrador ou Gerente.
+```json
+"Ai": {
+  "BaseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "ApiKey": "",
+  "Model": "gemini-3.6-flash",
+  "MaxTokens": 1024,
+  "TimeoutSeconds": 30
+}
+```
+
+Cole sua chave entre as aspas do `ApiKey` e salve. **Nada mais precisa mudar** se for usar o Gemini:
+
+```json
+  "ApiKey": "AIzaSyC...sua-chave-aqui",
+```
+
+### Passo 3 · Só agora suba o sistema
+
+```bash
+docker compose --profile app up -d --build
+```
+
+> **Por que a ordem importa:** o Docker tira uma *cópia* do arquivo quando monta o sistema. Se você colar a chave depois de já ter subido tudo, ele continua usando a cópia antiga — sem a chave. Se foi o seu caso, rode o comando abaixo para refazer só a parte de notas:
+>
+> ```bash
+> docker compose --profile app up -d --build faturamento
+> ```
+
+### Passo 4 · Confirme que ligou
+
+```bash
+docker compose --profile app logs faturamento | grep -i "IA desabilitada"
+```
+
+Esse comando procura por uma mensagem de aviso no sistema.
+
+- **Não apareceu nada** → a IA está ligada, pode usar
+- **Apareceu uma linha** → a chave não chegou; volte ao passo 2 e confira se salvou o arquivo
+
+Na tela, abra uma nota **aberta**: deve haver um campo roxo com ✨ escrito *"Descreva o pedido e a IA monta os itens"*. Escreva `3 parafusos sextavados e dois martelos de borracha` e clique em **Interpretar**.
 
 ---
 
-## O que o app ensina sozinho
+### O que cada campo faz
 
-Nada acima depende de alguém ler este arquivo. As mesmas instruções aparecem dentro da aplicação, no momento em que fazem falta.
+| Campo | Para quê |
+|---|---|
+| `BaseUrl` | **Qual empresa de IA** você vai usar. É só isto que muda entre Gemini, OpenAI e outros |
+| `ApiKey` | Sua senha de acesso à IA. **Em branco = IA desligada**, e o resto funciona igual |
+| `Model` | Qual modelo daquela empresa. De tempos em tempos modelos antigos saem do ar |
+| `MaxTokens` | Tamanho máximo da resposta. 1024 é bem mais que o suficiente aqui |
+| `TimeoutSeconds` | Quantos segundos esperar antes de desistir |
 
-**Tela de entrada.** As credenciais de teste ficam na tela, com um botão que preenche o formulário e entra.
+Você não escolhe a empresa numa lista porque não precisa: todas usam o mesmo jeito de conversar. Trocar de IA é trocar o endereço e o nome do modelo — **nenhuma linha de programação muda**.
 
-**Tour de primeira visita.** Nove passos que atravessam Painel, Produtos, Notas e Usuários — navegando entre as telas e destacando o elemento de cada explicação. Sempre com **Próximo**, **Voltar** e **Pular**. Para rever, use *Rever o tour* no pé da barra lateral.
+### 🔄 Prefere outra IA? Funciona com qualquer uma
 
-**Modo Explorar.** Botão no topo. Com ele ligado, todo elemento importante ganha um `?`; clique para ver o que ele faz por trás — por exemplo, que *Imprimir* publica um comando numa fila e a nota fica Processando até o resultado voltar.
+O projeto vem configurado para o **Gemini** porque a chave é gratuita — mas você não está preso a ele. Escolha qualquer uma das quatro:
 
-**Estados vazios que ensinam.** Não dizem "sem resultados". Dizem por que aquilo importa e oferecem a ação:
-
-> **Nenhum produto ainda**
-> Cadastre o primeiro produto para conseguir emitir uma nota fiscal.
-> `[ Cadastrar produto ]`
-
-**Erros que explicam.** Toda mensagem responde três coisas: o que houve, o que aconteceu com o seu trabalho, e o que fazer agora. *"Saldo insuficiente para P-0733. A nota não foi impressa e continua aberta. Ajuste a quantidade e tente de novo."*
-
----
-
-## Como saber onde você está
-
-O sistema tem duas áreas, e cada uma se veste de um jeito. É proposital: você reconhece o ambiente antes de ler o título.
-
-| | Produtos | Notas fiscais |
+| | Precisa de chave? | Custo |
 |---|---|---|
-| **Cor** | laranja | azul |
-| **Ambiente** | almoxarifado, prateleira, etiqueta | escritório, documento, arquivo |
-| **Letra** | monoespaçada, caixa alta | serifada, caixa mista |
-| **Canto e traço** | 2px, borda grossa | 10px, fio fino |
-| **O que você faz** | cadastra produto e confere saldo | emite nota e manda imprimir |
+| **Google Gemini** *(padrão)* | sim, gratuita | grátis |
+| **OpenAI** | sim | pago |
+| **Anthropic** | sim | pago |
+| **Ollama** | não | grátis, roda na sua máquina |
 
-O que **não** muda: verde é sempre sucesso, vermelho é sempre erro, âmbar é sempre atenção — nas duas áreas. Cor de ambiente diz *onde*; cor de estado diz *o quê*.
+Para trocar, **substitua a seção `Ai` inteira** por um dos blocos abaixo. Não é preciso mexer em mais nada — nem no código, nem em outro arquivo.
 
-A interface é mobile-first: abaixo de 768px a barra lateral vira barra inferior e as tabelas viram cartões.
+**OpenAI**
 
----
-
-## Arquitetura
-
-```
-                    ┌───────────────┐
-   navegador ─────► │  API-Gateway  │  :5000   cookie de sessão, JWT interno,
-   (cookie)         │     YARP      │          circuit breaker, serve o front
-                    └───┬───────┬───┘
-                        │       │
-              ┌─────────┘       └─────────┐
-              ▼                           ▼
-     ┌─────────────────┐         ┌──────────────────┐
-     │  API-Estoque    │         │  API-Faturamento │
-     │  SQL Server     │         │  PostgreSQL      │
-     │  dono do saldo  │         │  dono da nota    │
-     └────────┬────────┘         └────────┬─────────┘
-              │                           │
-              └──────────┬────────────────┘
-                         ▼
-                    ┌──────────┐
-                    │ RabbitMQ │   saga coreografada
-                    └──────────┘
+```json
+"Ai": {
+  "BaseUrl": "https://api.openai.com/v1",
+  "ApiKey": "COLE-SUA-CHAVE-AQUI",
+  "Model": "gpt-4o-mini",
+  "MaxTokens": 1024,
+  "TimeoutSeconds": 30
+}
 ```
 
-O navegador **só fala com o gateway**, sempre por cookie `HttpOnly`. O gateway troca o cookie por um JWT interno assinado antes de encaminhar — o front nunca vê token, os serviços nunca veem cookie.
+**Anthropic**
 
-### A impressão é uma saga
-
+```json
+"Ai": {
+  "BaseUrl": "https://api.anthropic.com/v1",
+  "ApiKey": "COLE-SUA-CHAVE-AQUI",
+  "Model": "claude-haiku-4-5",
+  "MaxTokens": 1024,
+  "TimeoutSeconds": 30
+}
 ```
-Faturamento  ──BaixarEstoqueCommand──►  Estoque
-                                          │ debita tudo ou nada (savepoint)
-                                          ▼
-Faturamento  ◄──EstoqueBaixado / EstoqueRejeitado──┘
-             fecha a nota          ou  recusa e reabre
+
+**Ollama** — roda na sua própria máquina, sem pagar nada e sem criar conta
+
+```json
+"Ai": {
+  "BaseUrl": "http://host.docker.internal:11434/v1",
+  "ApiKey": "ollama",
+  "Model": "llama3.2",
+  "MaxTokens": 1024,
+  "TimeoutSeconds": 120
+}
 ```
 
-Nenhuma chamada HTTP entre os dois serviços. Cada um grava o evento no próprio banco **na mesma transação** da mudança de estado (outbox transacional) e um worker publica depois. A entrega é *at-least-once*, então todo consumidor é idempotente.
+Antes, instale o [Ollama](https://ollama.com), deixe-o aberto e baixe o modelo com `ollama pull llama3.2`. Como ele é mais lento que os outros, o tempo de espera está maior. Se estiver rodando o Faturamento pela IDE em vez do Docker, troque `host.docker.internal` por `localhost`.
 
-| Decisão | Por quê |
-|---|---|
-| Tudo ou nada via savepoint | Uma rejeição desfaz os débitos parciais mas preserva o marcador de idempotência e o evento de recusa |
-| Impressão expirada **mantém** a chave | É o que deixa a nota se curar sozinha quando o estoque responde atrasado |
-| Comando duplicado **reemite** o resultado | Sem isso, um resultado perdido travaria a nota para sempre |
-| Concorrência resolvida no banco | `UPDATE` condicional + `CHECK (balance >= 0)`, não lock de aplicação |
-| A URN define a exchange do RabbitMQ | Por padrão o MassTransit usa o namespace CLR, e publicador e consumidor nunca se encontrariam |
+### Se der errado
 
----
+**O campo roxo não aparece na tela** — a IA está desligada. Rode o comando do passo 4.
 
-## Rodar sem Docker
-
-Infraestrutura em contêiner, serviços na IDE:
+**"Assistente indisponível"** — a chave chegou, mas a chamada falhou. Veja o motivo real:
 
 ```bash
-docker compose up -d          # só bancos + RabbitMQ
+docker compose --profile app logs faturamento | grep -i "Assistente indisponível" -A 3
 ```
+
+- `401` ou `403` → chave inválida ou expirada
+- `404 model not found` → o modelo saiu do ar; troque o `Model`
+- `429` → limite de uso da conta atingido
+- `503` → sobrecarga momentânea do fornecedor; o sistema já tenta 3 vezes, mas insista
+
+**"Não identifiquei nenhum produto"** — não é erro. A IA só resolve produtos que **existem cadastrados**; cadastre-os antes de descrever o pedido.
+
+**O serviço não sobe depois de editar** — provavelmente o JSON ficou inválido (vírgula sobrando ou faltando). Confira com:
+
+```bash
+docker compose --profile app logs faturamento | head -20
+```
+
+---
+
+## 5 · Rodar sem Docker
+
+Se quiser abrir o código e rodar cada parte pela sua IDE, dá. Só os bancos de dados e a fila continuam no Docker — instalar os três na mão daria muito trabalho e não muda nada no resultado.
+
+Neste modo você precisa ter instalado:
+
+| | Versão | Conferir com |
+|---|---|---|
+| .NET SDK | **10.0.400 ou maior** — versões antigas nem abrem o projeto | `dotnet --version` |
+| Node.js | **20 ou maior** | `node --version` |
+| Docker | qualquer versão | `docker --version` |
+
+Primeiro suba só os bancos e a fila (repare que aqui **não tem** `--profile app`):
+
+```bash
+docker compose up -d
+```
+
+Depois abra quatro terminais, um para cada parte:
 
 ```bash
 cd API-Gateway     && dotnet run --project Gateway          # :5000
@@ -204,40 +252,97 @@ cd API-Faturamento && dotnet run --project Faturamento.Api  # :5108
 cd NotaFlow        && npm install && npm start              # :4200
 ```
 
-Em desenvolvimento acesse **:4200** — o `proxy.conf.json` encaminha `/api` para o gateway, mantendo a mesma origem que o cookie `SameSite=Strict` exige. Bater direto em `:5247` ou `:5108` não funciona: esses serviços só aceitam o JWT interno que o gateway assina.
+**Você não precisa configurar nada** — os endereços dos bancos já vêm prontos no projeto.
 
-```bash
-cd NotaFlow && npm test       # 18 testes de componente e de tour
-```
+Deixe o **Gateway por último**. Como tudo passa por ele, as telas só respondem quando Estoque e Faturamento já estiverem no ar.
 
----
+Neste modo o endereço é **http://localhost:4200**, e não o :5000. É o endereço das telas, e ele já sabe conversar com o gateway por trás.
 
-## Estrutura
-
-| Pasta | O que é | Stack |
-|---|---|---|
-| `API-Gateway/` | Entrada única: autenticação Argon2id, cookie, antiforgery, proxy YARP, circuit breaker | .NET 10 · PostgreSQL |
-| `API-Estoque/` | Dono do saldo. Consome a baixa, publica o resultado | .NET 10 · Clean Architecture · SQL Server |
-| `API-Faturamento/` | Dono da nota. Publica a baixa, consome o resultado | .NET 10 · Clean Architecture · PostgreSQL |
-| `NotaFlow/` | Interface | Angular 21 · signals · `httpResource` |
-| `Documentacao/` | Decisões de arquitetura, domínio e design system | — |
-
-Cada serviço .NET tem sua própria solução `.slnx`.
+> Se tentar abrir o :5247 ou o :5108 direto no navegador, vai receber um erro de acesso negado. É proposital: esses serviços só aceitam pedidos que passaram pelo gateway.
 
 ---
 
-## Se algo não funcionar
+## 6 · Quando algo der errado
+
+**Página em branco ou erro 502 no :5000** — as telas não subiram. Se estiver usando Docker, veja o que aconteceu:
 
 ```bash
-docker compose --profile app ps       # os 8 contêineres estão de pé?
-docker compose --profile app logs -f gateway
+docker compose --profile app logs notaflow
 ```
 
-O SQL Server é o mais lento a ficar pronto no primeiro boot; se uma tela mostrar *"não foi possível carregar"* logo após subir, o botão **Tentar novamente** resolve. Toda resposta de erro da API traz um `traceId` que permite achar a requisição exata no log do serviço.
+Se estiver rodando pela IDE, o endereço certo é o **:4200**.
 
-Para começar do zero, apagando todos os dados:
+**"Não foi possível carregar" logo depois de subir** — um dos bancos ainda está iniciando. Espere alguns segundos e clique em **Tentar novamente**.
+
+**A nota trava em "Processando"** — quer dizer que o serviço de estoque ou a fila não estão respondendo:
+
+```bash
+docker compose --profile app logs estoque
+```
+
+Depois de cerca de 1 minuto a nota vira **Pendente** e explica o que houve. **Nada é perdido:** suba o serviço e clique em fechar de novo — o sistema reconhece que é a mesma operação e não desconta o estoque duas vezes.
+
+**A IA não responde** — veja a [seção 4](#4--habilitar-a-ia-opcional), que tem os erros mais comuns e o que fazer em cada um.
+
+**"Porta já em uso"** — algum outro programa da sua máquina está ocupando uma das portas que o sistema usa (5000, 5432, 5433, 1433 ou 5672). Feche esse programa e tente de novo.
+
+**Descobrir a causa exata de um erro** — sempre que o sistema mostra um erro, ele vem com um código de rastreio (`traceId`). Copie esse código e procure por ele:
+
+```bash
+docker compose --profile app logs faturamento | grep <traceId>
+```
+
+**Apagar tudo e recomeçar** — apaga inclusive os produtos e notas que você cadastrou:
 
 ```bash
 docker compose --profile app down -v
 docker compose --profile app up -d --build
 ```
+
+---
+
+## 7 · Stack
+
+**Backend** · .NET 10 · ASP.NET Core · EF Core · MassTransit + RabbitMQ · YARP · Polly · QuestPDF · Argon2id
+**Frontend** · Angular 21 · signals + `httpResource` · RxJS · Vitest
+**Bancos** · PostgreSQL (gateway e faturamento) · SQL Server (estoque)
+
+As decisões de arquitetura — outbox transacional, saga coreografada, idempotência, tratamento de erros, LINQ e o uso de IA — estão em **[`Documentacao/DetalhamentoTecnico.md`](Documentacao/DetalhamentoTecnico.md)**.
+
+---
+
+## 8 · Testes
+
+Mais de **700**, nos quatro projetos. Os de integração sobem PostgreSQL, SQL Server e RabbitMQ de verdade, em contêineres descartáveis — por isso exigem Docker rodando.
+
+```bash
+cd API-Estoque     && dotnet test
+cd API-Faturamento && dotnet test
+cd API-Gateway     && dotnet test
+cd NotaFlow        && npx ng test --watch=false
+```
+
+Só os unitários, sem Docker:
+
+```bash
+dotnet test Testes/TestesUnitarios
+```
+
+---
+
+## 9 · Documentação
+
+| Onde | O que tem |
+|---|---|
+| [`Documentacao/DetalhamentoTecnico.md`](Documentacao/DetalhamentoTecnico.md) | Detalhamento técnico da especificação |
+| [`Documentacao/Back/`](Documentacao/Back/) | Arquitetura, domínio e testes de cada serviço |
+
+Com a aplicação no ar: **API** em `/scalar/v1` · **RabbitMQ** em :15672 (`Admin`/`Admin`, vhost `emissor`).
+
+---
+
+## Configuração
+
+Não há *user secrets*: connection strings e chaves de desenvolvimento estão versionadas para o projeto rodar com `git clone` e um comando.
+
+A configuração é **obrigatória e validada no boot** — seção ausente derruba a inicialização nomeando a chave responsável, em vez de subir meio configurada. A única exceção é `Ai:ApiKey`, que pode ficar vazia.

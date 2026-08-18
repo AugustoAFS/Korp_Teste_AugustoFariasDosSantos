@@ -151,7 +151,7 @@ public sealed class InvoiceTests
         var nota = NotaComItem();
         nota.StartPrinting(Guid.CreateVersion7());
 
-        nota.Reject("Saldo insuficiente do produto PAR-M8.");
+        nota.Reject("Saldo insuficiente do produto PAR-M8.", null);
 
         nota.Status.ShouldBe(InvoiceStatus.Open);
         nota.ProcessingId.ShouldBeNull();
@@ -164,7 +164,7 @@ public sealed class InvoiceTests
     {
         var nota = NotaComItem();
         nota.StartPrinting(Guid.CreateVersion7());
-        nota.Reject("Saldo insuficiente.");
+        nota.Reject("Saldo insuficiente.", null);
 
         nota.Editable.ShouldBeTrue();
     }

@@ -12,6 +12,7 @@ public sealed class InvoiceServiceTests
 {
     private readonly IInvoiceRepository _notas = Substitute.For<IInvoiceRepository>();
     private readonly IReplicatedProductRepository _produtos = Substitute.For<IReplicatedProductRepository>();
+    private readonly IInvoicePdfWriter _pdf = Substitute.For<IInvoicePdfWriter>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ICurrentUser _usuario = Substitute.For<ICurrentUser>();
     private readonly InvoiceService _service;
@@ -26,7 +27,7 @@ public sealed class InvoiceServiceTests
         _unitOfWork.SaveWithoutConflict(Arg.Any<CancellationToken>()).Returns(true);
 
         _service = new InvoiceService(
-            _notas, _produtos, _unitOfWork, _usuario, NullLogger<InvoiceService>.Instance);
+            _notas, _produtos, _pdf, _unitOfWork, _usuario, NullLogger<InvoiceService>.Instance);
     }
 
     private static Invoice Nota(long emitidaPor = 7) => new(1, emitidaPor, "Augusto");
@@ -268,6 +269,54 @@ public sealed class InvoiceServiceTests
         resultado.Success.ShouldBeTrue();
         resultado.Status.ShouldBe(System.Net.HttpStatusCode.OK);
         resultado.Value.ShouldNotBeNull();
+    }
+
+    #endregion
+
+    #region PDF da nota fechada
+
+    [Fact]
+    public async Task Pdf_de_nota_inexistente_devolve_404()
+    {
+        _notas.GetById(1, Arg.Any<CancellationToken>()).Returns((Invoice?)null);
+
+        (await _service.GetInvoicePdf(1, default)).Error!.Code.ShouldBe("invoice_not_found");
+    }
+
+    [Fact]
+    public async Task Pdf_de_nota_de_outro_usuario_devolve_404()
+    {
+        Existe(Nota(emitidaPor: 99));
+
+        (await _service.GetInvoicePdf(1, default)).Error!.Code.ShouldBe("invoice_not_found");
+    }
+
+    [Fact]
+    public async Task Pdf_de_nota_aberta_e_recusado()
+    {
+        Existe(Nota());
+
+        var resultado = await _service.GetInvoicePdf(1, default);
+
+        resultado.Error!.Code.ShouldBe("invoice_not_closed");
+        _pdf.DidNotReceive().Write(Arg.Any<Invoice>());
+    }
+
+    [Fact]
+    public async Task Pdf_de_nota_fechada_e_gerado_com_nome_pelo_numero()
+    {
+        var nota = new Invoice(42, 7, "Augusto");
+        nota.AddItem(Produto, "PAR-M8", "Parafuso", 1);
+        nota.StartPrinting(Guid.CreateVersion7());
+        nota.Close();
+        Existe(nota);
+        _pdf.Write(nota).Returns([1, 2, 3]);
+
+        var resultado = await _service.GetInvoicePdf(1, default);
+
+        resultado.Success.ShouldBeTrue();
+        resultado.Value!.FileName.ShouldBe("nota-fiscal-0000042.pdf");
+        resultado.Value.Content.ShouldBe([1, 2, 3]);
     }
 
     #endregion

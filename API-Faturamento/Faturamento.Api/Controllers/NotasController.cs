@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Faturamento.ApplicationService.Interfaces;
+using Faturamento.Domain.Dtos.Ai;
 using Faturamento.Domain.Dtos.Request;
 using Faturamento.Domain.Dtos.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -14,7 +15,8 @@ namespace Faturamento.Api.Controllers;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
 public sealed class NotasController(
     IInvoiceService notaService,
-    IInvoicePrintService impressaoService) : BaseController
+    IInvoicePrintService impressaoService,
+    IInvoiceDraftService rascunhoService) : BaseController
 {
     #region GET's
 
@@ -30,6 +32,21 @@ public sealed class NotasController(
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetInvoiceById(long id, CancellationToken ct)
         => Respond(await notaService.GetInvoiceById(id, ct));
+
+    [HttpGet("{id:long}/pdf")]
+    [Authorize]
+    [Produces("application/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> GetInvoicePdf(long id, CancellationToken ct)
+    {
+        var resultado = await notaService.GetInvoicePdf(id, ct);
+
+        return resultado.Success
+            ? File(resultado.Value!.Content, "application/pdf", resultado.Value.FileName)
+            : Respond(resultado);
+    }
 
     #endregion
 
@@ -50,6 +67,16 @@ public sealed class NotasController(
     public async Task<IActionResult> AddInvoiceItem(
         long id, [FromBody] AddInvoiceItemRequest request, CancellationToken ct)
         => Respond(await notaService.AddInvoiceItem(id, request, ct));
+
+    [HttpPost("{id:long}/itens/interpretar")]
+    [Authorize]
+    [ProducesResponseType<InterpretationResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> InterpretInvoiceItems(
+        long id, [FromBody] InterpretItemsRequest request, CancellationToken ct)
+        => Respond(await rascunhoService.InterpretItems(id, request, ct));
 
     [HttpPost("{id:long}/impressao")]
     [Authorize]

@@ -2,7 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, switchMap, takeWhile, timer } from 'rxjs';
 import { API } from '../api.const';
-import { AddInvoiceItemRequest, Invoice, UpdateInvoiceItemRequest } from '../models/invoice';
+import {
+  AddInvoiceItemRequest,
+  InterpretationResult,
+  Invoice,
+  UpdateInvoiceItemRequest
+} from '../models/invoice';
 
 @Injectable({ providedIn: 'root' })
 export class InvoicesService {
@@ -22,6 +27,12 @@ export class InvoicesService {
 
   removeItem = (id: number, itemId: number) =>
     firstValueFrom(this.http.delete<Invoice>(`${API}/notas/${id}/itens/${itemId}`));
+
+  interpret = (id: number, phrase: string) =>
+    firstValueFrom(this.http.post<InterpretationResult>(`${API}/notas/${id}/itens/interpretar`, { phrase }));
+
+  pdf = (id: number) =>
+    firstValueFrom(this.http.get(`${API}/notas/${id}/pdf`, { responseType: 'blob' }));
 
   print = (id: number) => firstValueFrom(this.http.post<Invoice>(`${API}/notas/${id}/impressao`, {}));
 

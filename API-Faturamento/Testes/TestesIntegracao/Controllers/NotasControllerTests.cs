@@ -18,6 +18,7 @@ public sealed record NotaNaResposta(
     bool Printing,
     bool Editable,
     string? LastError,
+    string? RejectionExplanation,
     IReadOnlyList<ItemNaResposta> Items);
 
 public sealed record PaginaDeNotas(
@@ -351,6 +352,57 @@ public sealed class NotasControllerTests : IAsyncLifetime, IDisposable
 
         var pagina = await cliente.GetFromJsonAsync<PaginaDeNotas>(Rota);
         pagina!.Total.ShouldBe(0);
+    }
+
+    #endregion
+
+    #region Assistente de IA
+
+    [Fact]
+    public async Task Interpretar_sem_chave_configurada_devolve_503_com_ai_disabled()
+    {
+        var cliente = Funcionario();
+        var nota = await CriarNota(cliente);
+
+        var resposta = await cliente.PostAsJsonAsync(
+            $"{Rota}/{nota.Id}/itens/interpretar", new { phrase = "3 parafusos sextavados" });
+
+        resposta.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+
+        var problema = await resposta.Content.ReadFromJsonAsync<ProblemDetails>();
+        problema!.Extensions["code"]!.ToString().ShouldBe("ai_disabled");
+    }
+
+    [Fact]
+    public async Task Interpretar_exige_sessao()
+    {
+        var resposta = await _api.ClienteAnonimo().PostAsJsonAsync(
+            $"{Rota}/1/itens/interpretar", new { phrase = "3 parafusos" });
+
+        resposta.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Interpretar_com_frase_curta_e_recusado_na_validacao()
+    {
+        var cliente = Funcionario();
+        var nota = await CriarNota(cliente);
+
+        var resposta = await cliente.PostAsJsonAsync(
+            $"{Rota}/{nota.Id}/itens/interpretar", new { phrase = "ab" });
+
+        resposta.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Nota_sem_rejeicao_nao_traz_explicacao_de_ia()
+    {
+        var cliente = Funcionario();
+        var nota = await CriarNota(cliente);
+
+        var atual = await cliente.GetFromJsonAsync<NotaNaResposta>($"{Rota}/{nota.Id}");
+
+        atual!.RejectionExplanation.ShouldBeNull();
     }
 
     #endregion

@@ -13,6 +13,7 @@ namespace Faturamento.ApplicationService.Services;
 public sealed class InvoicePrintService(
     IInvoiceRepository invoices,
     IProcessedMessageRepository messages,
+    IRejectionExplainer explainer,
     IFaturamentoEventPublisher publisher,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
@@ -105,9 +106,11 @@ public sealed class InvoicePrintService(
     public async Task RejectInvoice(
         Guid messageId, long invoiceId, Guid processingId, string reason, CancellationToken ct)
     {
+        var explanation = await Explain(invoiceId, reason, ct);
+
         await Apply(messageId, StockRejected, invoiceId, processingId, invoice =>
         {
-            invoice.Reject(reason);
+            invoice.Reject(reason, explanation);
 
             logger.LogWarning(
                 "Nota {Nota} rejeitada pelo estoque · processamento {Processamento} · {Motivo}",
@@ -133,6 +136,21 @@ public sealed class InvoicePrintService(
         await unitOfWork.SaveWithoutConflict(ct);
 
         return expired.Count;
+    }
+
+    private async Task<string?> Explain(long invoiceId, string reason, CancellationToken ct)
+    {
+        if (!explainer.Enabled) return null;
+
+        var invoice = await invoices.GetById(invoiceId, ct);
+
+        if (invoice is null) return null;
+
+        var itens = invoice.Items
+            .Select(item => $"{item.Quantity}x {item.ProductDescription}")
+            .ToArray();
+
+        return await explainer.Explain(reason, itens, ct);
     }
 
     private async Task Apply(

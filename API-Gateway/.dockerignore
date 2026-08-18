@@ -1,0 +1,25 @@
+# Contexto de build deste serviço. O .dockerignore da raiz não vale aqui,
+# porque o compose usa `context: ./API-<servico>` e não `context: .`.
+
+# ---------- controle de versão / ferramentas
+**/.git
+**/.vs
+**/.vscode
+**/.idea
+
+# ---------- .NET
+**/bin
+**/obj
+**/*.*proj.user
+**/artifacts
+**/TestResults
+
+# ---------- testes não entram na imagem de runtime
+Testes/
+
+# ---------- docker
+**/Dockerfile*
+**/.dockerignore
+
+# ---------- documentação
+**/*.md

@@ -25,6 +25,7 @@ public sealed class Invoice : AuditableEntity
     public Guid? ProcessingId { get; private set; }
     public DateTimeOffset? ProcessingStartedAt { get; private set; }
     public string? LastError { get; private set; }
+    public string? RejectionExplanation { get; private set; }
     public IReadOnlyCollection<InvoiceItem> Items => _items;
 
     public bool Printing => ProcessingId is not null && LastError is null;
@@ -44,6 +45,7 @@ public sealed class Invoice : AuditableEntity
         ProcessingId = processingId;
         ProcessingStartedAt = DateTimeOffset.UtcNow;
         LastError = null;
+        RejectionExplanation = null;
     }
 
     public void Close()
@@ -53,13 +55,15 @@ public sealed class Invoice : AuditableEntity
         ProcessingId = null;
         ProcessingStartedAt = null;
         LastError = null;
+        RejectionExplanation = null;
     }
 
-    public void Reject(string reason)
+    public void Reject(string reason, string? explanation)
     {
         ProcessingId = null;
         ProcessingStartedAt = null;
         LastError = reason;
+        RejectionExplanation = explanation;
     }
 
     public void ExpirePrinting(string reason) => LastError = reason;

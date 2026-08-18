@@ -17,10 +17,16 @@
       </button>
     </div>
 
-    <button type="button" class="primario" [disabled]="!editavel() || n.items.length === 0 || ocupado()"
-            (click)="imprimir()">
-      @if (imprimindo()) { <span class="spin"></span> Processando } @else { Imprimir }
-    </button>
+    @if (n.status === 'Closed') {
+      <button type="button" class="primario" [disabled]="baixando()" (click)="baixarPdf()">
+        @if (baixando()) { <span class="spin"></span> Gerando } @else { Imprimir PDF }
+      </button>
+    } @else {
+      <button type="button" class="primario" [disabled]="!editavel() || n.items.length === 0 || ocupado()"
+              (click)="fechar()">
+        @if (imprimindo()) { <span class="spin"></span> Processando } @else { Fechar nota }
+      </button>
+    }
   </header>
 
   <p class="meta">
@@ -30,9 +36,59 @@
 
   @if (n.lastError && !n.printing) {
     <div class="aviso" role="alert">
-      <b>{{ n.lastError }}</b>
-      <span>A nota continua aberta. Ajuste os itens e mande imprimir de novo.</span>
+      @if (n.rejectionExplanation) {
+        <b>{{ n.rejectionExplanation }}</b>
+        <span class="ia-marca">explicado por IA</span>
+        <span class="motivo-tecnico">{{ n.lastError }}</span>
+      } @else {
+        <b>{{ n.lastError }}</b>
+      }
+      <span>A nota continua aberta. Ajuste os itens e feche de novo.</span>
     </div>
+  }
+
+  @if (editavel() && !iaIndisponivel()) {
+    <section class="ia-bloco" aria-labelledby="ia-titulo">
+      <span class="ia-marca" id="ia-titulo">Descreva o pedido e a IA monta os itens</span>
+
+      <textarea class="ia-campo" name="pedidoIa" rows="2"
+                placeholder="Ex.: 3 parafusos sextavados e 2 martelos de borracha"
+                [ngModel]="pedidoIa()"
+                (ngModelChange)="pedidoIa.set($event)"
+                [disabled]="interpretando()"></textarea>
+
+      <div class="ia-acoes">
+        <button type="button" class="ia-botao"
+                [disabled]="interpretando() || pedidoIa().trim().length < 3"
+                (click)="interpretar()">
+          {{ interpretando() ? 'Interpretando…' : 'Interpretar' }}
+        </button>
+
+        @if (sugestoes().length || naoReconhecidos().length) {
+          <button type="button" class="ia-descartar" (click)="descartarSugestoes()">Descartar</button>
+        }
+      </div>
+
+      @for (sugestao of sugestoes(); track sugestao.productId) {
+        <div class="ia-sugestao">
+          <span class="codigo">{{ sugestao.productCode }}</span>
+          <span>
+            {{ sugestao.quantity }}x {{ sugestao.productDescription }}
+            @if (sugestao.alreadyInInvoice) { <span class="ja-consta">já consta na nota</span> }
+          </span>
+          <button type="button" class="ia-aceitar"
+                  [disabled]="ocupado() || sugestao.alreadyInInvoice"
+                  (click)="aceitarSugestao(sugestao)">Adicionar</button>
+        </div>
+      }
+
+      @if (naoReconhecidos().length) {
+        <p class="ia-nao-reconhecido">
+          Não encontrei no catálogo:
+          @for (codigo of naoReconhecidos(); track codigo) { <code>{{ codigo }}</code> }
+        </p>
+      }
+    </section>
   }
 
   @if (editavel()) {
@@ -96,7 +152,7 @@
   }
 
   @if (n.items.length === 0) {
-    <p class="vazio-simples">Nenhum item. Adicione ao menos um produto para poder imprimir.</p>
+    <p class="vazio-simples">Nenhum item. Adicione ao menos um produto para poder fechar a nota.</p>
   } @else {
     <div class="tabela-wrapper">
       <table>

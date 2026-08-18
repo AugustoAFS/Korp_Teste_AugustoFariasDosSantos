@@ -16,6 +16,7 @@ WORKDIR /src
 # Copia todos os .csproj antes do restore para aproveitar o cache de camada:
 # alterar código-fonte não invalida a camada de restore.
 COPY ["Faturamento.Api/Faturamento.Api.csproj", "Faturamento.Api/"]
+COPY ["Faturamento.Ai/Faturamento.Ai.csproj", "Faturamento.Ai/"]
 COPY ["Faturamento.ApplicationService/Faturamento.ApplicationService.csproj", "Faturamento.ApplicationService/"]
 COPY ["Faturamento.Domain/Faturamento.Domain.csproj", "Faturamento.Domain/"]
 COPY ["Faturamento.EventListeners/Faturamento.EventListeners.csproj", "Faturamento.EventListeners/"]

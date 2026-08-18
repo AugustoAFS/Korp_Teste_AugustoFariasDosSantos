@@ -24,7 +24,6 @@ CREATE TABLE users (
     deleted_at           TIMESTAMPTZ  NULL
 );
 
-CREATE UNIQUE INDEX ux_users_email ON users (email);
 ```
 
 ## roles
@@ -40,7 +39,6 @@ CREATE TABLE roles (
     deleted_at  TIMESTAMPTZ  NULL
 );
 
-CREATE UNIQUE INDEX ux_roles_name ON roles (name);
 ```
 
 ## user_roles
@@ -56,5 +54,4 @@ CREATE TABLE user_roles (
     PRIMARY KEY (user_id, role_id)
 );
 
-CREATE INDEX ix_user_roles_role_id ON user_roles (role_id);
 ```

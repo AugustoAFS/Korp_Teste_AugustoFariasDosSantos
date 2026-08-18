@@ -16,7 +16,11 @@ public static class EventListenerService
 
         services.AddMassTransit(x =>
         {
-            x.AddConsumers(typeof(OnBaixarEstoque).Assembly);
+            #region [ Event Listeners ]
+
+            x.AddConsumer<OnBaixarEstoque, OnBaixarEstoque.Definition>();
+
+            #endregion [ Event Listeners ]
 
             x.UsingRabbitMq((ctx, bus) =>
             {
@@ -29,7 +33,11 @@ public static class EventListenerService
             });
         });
 
+        #region [ Workers ]
+
         services.AddHostedService<OutboxDispatcherWorker>();
+
+        #endregion [ Workers ]
 
         return services;
     }

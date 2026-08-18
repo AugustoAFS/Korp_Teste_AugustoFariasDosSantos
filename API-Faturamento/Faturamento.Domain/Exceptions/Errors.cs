@@ -108,6 +108,30 @@ public static class Errors
         Detail = "Aguarde alguns instantes antes de tentar novamente."
     };
 
+    public static readonly Error InvoiceNotClosed = new()
+    {
+        Code = "invoice_not_closed",
+        Title = "Nota ainda não fechada.",
+        Status = HttpStatusCode.Conflict,
+        Detail = "O PDF só fica disponível depois que a nota é fechada e o estoque é baixado."
+    };
+
+    public static readonly Error AiDisabled = new()
+    {
+        Code = "ai_disabled",
+        Title = "Assistente indisponível.",
+        Status = HttpStatusCode.ServiceUnavailable,
+        Detail = "O assistente de IA não está configurado nesta instalação. Adicione os itens manualmente."
+    };
+
+    public static readonly Error AiUnavailable = new()
+    {
+        Code = "ai_unavailable",
+        Title = "Assistente fora do ar.",
+        Status = HttpStatusCode.ServiceUnavailable,
+        Detail = "Não foi possível interpretar o pedido agora. Tente de novo ou adicione os itens manualmente."
+    };
+
     public static readonly Error InternalError = new()
     {
         Code = "internal_error",
