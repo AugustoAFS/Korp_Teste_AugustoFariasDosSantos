@@ -41,7 +41,7 @@ O projeto foi criado na arquitetura de microsserviços, e cada sistema tem a sua
 O sistema tem um assistente que ajuda a cadastrar produtos na nota fiscal.
 
 > [!TIP]
-> Configure a IA **antes** de subir os contêineres (seção 1.2). O Docker copia o `appsettings.json` durante o build — se colar a chave depois, será preciso buildar de novo.
+> Configure a IA **antes** de subir os contêineres (seção 1.2). O Docker copia o `API-Faturamento/Faturamento.Api/appsettings.json` durante o build — se colar a chave depois, será preciso buildar de novo.
 
 #### Consiga uma chave
 
